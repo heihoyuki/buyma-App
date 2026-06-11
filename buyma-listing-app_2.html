@@ -803,9 +803,9 @@ async function submitBuyma(){
       shipping_area_id:parseInt(document.getElementById('shipArea').value),
       seller_memo:document.getElementById('srcUrl').value||''
     };
-    const res=await fetch('https://personal-shopper-api.buyma.com/api/v1/products.json',{
+    const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Buyma-Personal-Shopper-Api-Access-Token':token},
+      headers:{'Content-Type':'application/json','X-Buyma-Token':token},
       body:JSON.stringify(payload)
     });
     cm('mInfo');
