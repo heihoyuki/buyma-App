@@ -724,7 +724,6 @@ async function startGen(){
   const price=document.getElementById('price').value.trim();
   const catId=document.getElementById('catId').value;
   if(!selBrandId){alert('ブランドを選択してください');return;}
-  if(!name){alert('商品名を入力してください');return;}
   if(!catId){alert('カテゴリを選択してください');return;}
   if(!price){alert('販売価格を入力してください');return;}
   if(!key){alert('Claude APIキーを入力してください');return;}
@@ -770,7 +769,8 @@ async function startGen(){
 
 function buildResult(parsed){
   const brandLabel=selBrandName.replace(/\(.*?\)/g,'').trim();
-  const pname=parsed.product_name||(brandLabel+' '+document.getElementById('pname').value);
+  let pname=parsed.product_name||(brandLabel+' '+document.getElementById('pname').value);
+let len=0,cut=0;for(let i=0;i<pname.length;i++){len+=(pname.charCodeAt(i)>127?2:1);if(len<=60)cut=i+1;}pname=pname.slice(0,cut);
   document.getElementById('rname').value=pname;
   updateRCount();
   document.getElementById('rcomment').value=(parsed.description||'')+'\n\n'+FIXED_COMMENT;
