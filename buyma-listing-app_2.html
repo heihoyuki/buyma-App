@@ -342,6 +342,13 @@ textarea{resize:vertical;line-height:1.6;}
       <textarea id="memo" placeholder="カラー・素材・特徴など、AIに伝えたい情報を入力" style="min-height:80px;"></textarea>
     </div>
 
+    <!-- 出品用画像URL -->
+    <div class="fs">
+      <label>出品用画像URL <span class="req">*</span></label>
+      <textarea id="listingImgUrls" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg&#10;（1行1URL・最大20枚・公開アクセス可能なURLのみ）" style="min-height:80px;font-family:monospace;font-size:12px;"></textarea>
+      <div style="font-size:11px;color:#555;margin-top:5px;">BUYMAに掲載する商品画像のURL（base64不可・公開URLのみ）</div>
+    </div>
+
     <!-- API Keys -->
     <div class="fs">
       <label>Claude API Key <span class="req">*</span></label>
@@ -352,6 +359,11 @@ textarea{resize:vertical;line-height:1.6;}
       <label>BUYMA アクセストークン</label>
       <input type="text" id="buymaToken" placeholder="取得済みのトークンを入力..." style="font-family:monospace;font-size:12px;" autocomplete="off">
       <div style="font-size:11px;color:#555;margin-top:5px;">入力するとBUYMAへ自動出品できます（任意）・次回自動入力</div>
+    </div>
+    <div class="fs">
+      <label>BUYMA 配送方法ID</label>
+      <input type="text" id="shipMethodIds" placeholder="例: 123,456" style="font-family:monospace;font-size:12px;">
+      <div style="font-size:11px;color:#555;margin-top:5px;"><a href="https://www.buyma.com/my/shipping_methods/" target="_blank" style="color:#60d4f0;">BUYMA配送方法管理</a>でIDを確認 → カンマ区切りで入力・次回自動入力</div>
     </div>
 
     <button class="btn btn-p" onclick="startGen()">✨ AIで出品文を生成する</button>
@@ -421,11 +433,13 @@ let imgs=[], selBrandId=null, selBrandName='', selCatId=null, selCatTop='', selT
 
 // 初期化
 window.addEventListener('load',()=>{
-  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt');
+  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt'), sm=localStorage.getItem('smids');
   if(k) document.getElementById('apiKey').value=k;
   if(t) document.getElementById('buymaToken').value=t;
+  if(sm) document.getElementById('shipMethodIds').value=sm;
   document.getElementById('apiKey').addEventListener('input',e=>localStorage.setItem('cak',e.target.value));
   document.getElementById('buymaToken').addEventListener('input',e=>localStorage.setItem('bmt',e.target.value));
+  document.getElementById('shipMethodIds').addEventListener('input',e=>localStorage.setItem('smids',e.target.value));
 
   // お気に入りブランド
   const fb=document.getElementById('favbrands');
@@ -786,23 +800,68 @@ let len=0,cut=0;for(let i=0;i<pname.length;i++){len+=(pname.charCodeAt(i)>127?2:
 async function submitBuyma(){
   const token=document.getElementById('buymaToken').value.trim();
   if(!token){document.getElementById('mInfo').classList.add('open');return;}
+
+  // 画像URL検証
+  const imgUrls=document.getElementById('listingImgUrls').value.trim()
+    .split('\n').map(s=>s.trim()).filter(Boolean);
+  if(imgUrls.length===0){alert('出品用画像URLを入力してください');return;}
+  const images=imgUrls.slice(0,20).map((path,i)=>({path,position:i+1}));
+
+  // 配送方法ID検証
+  const smidsRaw=document.getElementById('shipMethodIds').value.trim();
+  if(!smidsRaw){alert('BUYMA配送方法IDを入力してください\nhttps://www.buyma.com/my/shipping_methods/ で確認できます');return;}
+  const shipping_methods=smidsRaw.split(',')
+    .map(s=>({shipping_method_id:parseInt(s.trim())}))
+    .filter(m=>!isNaN(m.shipping_method_id));
+
   const name=document.getElementById('rname').value.trim();
   const comment=document.getElementById('rcomment').value.trim();
   const price=parseInt(document.getElementById('price').value)||0;
+
+  // 購入期限（90日後）
+  const exp=new Date();exp.setDate(exp.getDate()+90);
+  const available_until=`${exp.getFullYear()}/${String(exp.getMonth()+1).padStart(2,'0')}/${String(exp.getDate()).padStart(2,'0')}`;
+
+  // バリエーション → options + variants
+  const varRows=getVariants();
+  const sizeVals=[...new Set(varRows.map(v=>v.size).filter(Boolean))];
+  const colorVals=[...new Set(varRows.map(v=>v.color).filter(Boolean))];
+  const options=[];
+  let pos=1;
+  sizeVals.forEach(val=>options.push({type:'size',value:val,position:pos++,master_id:0}));
+  colorVals.forEach(val=>options.push({type:'color',value:val,position:pos++,master_id:0}));
+  if(options.length===0) options.push({type:'size',value:'FREE',position:1,master_id:0});
+
+  const variants=varRows.length>0?varRows.map(v=>{
+    const vopts=[];
+    if(v.size) vopts.push({type:'size',value:v.size});
+    if(v.color) vopts.push({type:'color',value:v.color});
+    if(vopts.length===0) vopts.push({type:'size',value:'FREE'});
+    return{options:vopts,stock_type:v.type==='order'?'purchase_for_order':'stock_in_hand',stocks:v.qty};
+  }):[{options:[{type:'size',value:'FREE'}],stock_type:'stock_in_hand',stocks:1}];
 
   document.getElementById('mtitle').textContent='⏳ 出品中...';
   document.getElementById('mtext').textContent='BUYMAへ送信しています。しばらくお待ちください。';
   document.getElementById('mInfo').classList.add('open');
 
   try{
-    const payload={
-      control:'publish',name,comments:comment,price,
+    const srcUrl=document.getElementById('srcUrl').value||'';
+    const payload={product:{
+      control:'publish',
+      name,
+      comments:comment,
+      price,
       brand_id:selBrandId,
       category_id:selCatId,
       buying_area_id:parseInt(document.getElementById('buyArea').value),
       shipping_area_id:parseInt(document.getElementById('shipArea').value),
-      seller_memo:document.getElementById('srcUrl').value||''
-    };
+      available_until,
+      images,
+      shipping_methods,
+      options,
+      variants,
+      ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{})
+    }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Buyma-Token':token},
@@ -811,13 +870,11 @@ async function submitBuyma(){
     cm('mInfo');
     if(res.status===201){
       const d=await res.json();
-      document.getElementById('oktext').textContent=`出品リクエストを送信しました！
-リクエストID: ${d.request_uid}
-反映まで少しお待ちください。`;
+      document.getElementById('oktext').textContent=`出品リクエストを送信しました！\nリクエストID: ${d.request_uid}\n反映まで少しお待ちください。`;
       document.getElementById('mOK').classList.add('open');
     }else{
       const err=await res.json();
-      alert('出品エラー: '+JSON.stringify(err));
+      alert('出品エラー: '+JSON.stringify(err,null,2));
     }
   }catch(e){cm('mInfo');alert('通信エラー: '+e.message);}
 }
