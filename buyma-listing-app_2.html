@@ -132,9 +132,9 @@ textarea{resize:vertical;line-height:1.6;}
     <p>写真をアップして、AIが出品文を自動生成します</p>
   </div>
   <div class="steps">
-    <div class="stab active" id="tab1">① 写真・情報</div>
+    <div class="stab active" id="tab1" onclick="tabGo(1)">① 写真・情報</div>
     <div class="stab" id="tab2">② 生成確認</div>
-    <div class="stab" id="tab3">③ 出品</div>
+    <div class="stab" id="tab3" onclick="tabGo(3)">③ 出品</div>
   </div>
 
   <!-- SCREEN 1 -->
@@ -812,6 +812,7 @@ async function startGen(){
     const txt=data.content[0].text;
     const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
     buildResult(parsed);
+    genDone=true;
     showScr('s3');
   }catch(e){alert('エラー: '+e.message);showScr('s1');}
 }
@@ -878,8 +879,10 @@ async function submitBuyma(){
 
   try{
     const srcUrl=document.getElementById('srcUrl').value||'';
+    const refNum='REF-'+Date.now();
     const payload={product:{
       control:'publish',
+      reference_number:refNum,
       name,
       comments:comment,
       price,
@@ -888,7 +891,7 @@ async function submitBuyma(){
       buying_area_id:parseInt(document.getElementById('buyArea').value),
       shipping_area_id:parseInt(document.getElementById('shipArea').value),
       available_until,
-      ...(images.length>0?{images}:{}),
+      images:images.length>0?images:[{path:'https://placehold.co/600x600.jpg',position:1}],
       shipping_methods,
       options,
       variants,
@@ -918,6 +921,11 @@ function cp(id){
     const orig=btn.textContent;btn.textContent='✓ 完了';
     setTimeout(()=>btn.textContent=orig,1500);
   });
+}
+let genDone=false;
+function tabGo(n){
+  if(n===1) showScr('s1');
+  if(n===3&&genDone) showScr('s3');
 }
 function goBack(){showScr('s1');}
 function cm(id){document.getElementById(id).classList.remove('open');}
