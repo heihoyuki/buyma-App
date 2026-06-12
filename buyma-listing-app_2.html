@@ -361,9 +361,19 @@ textarea{resize:vertical;line-height:1.6;}
       <div style="font-size:11px;color:#555;margin-top:5px;">入力するとBUYMAへ自動出品できます（任意）・次回自動入力</div>
     </div>
     <div class="fs">
-      <label>BUYMA 配送方法ID</label>
-      <input type="text" id="shipMethodIds" placeholder="例: 123,456" style="font-family:monospace;font-size:12px;">
-      <div style="font-size:11px;color:#555;margin-top:5px;"><a href="https://www.buyma.com/my/shipping_methods/" target="_blank" style="color:#60d4f0;">BUYMA配送方法管理</a>でIDを確認 → カンマ区切りで入力・次回自動入力</div>
+      <label>配送方法リスト設定 <span style="font-size:11px;font-weight:normal;color:#555;">（初回のみ）</span></label>
+      <textarea id="shipMethodDefs" placeholder="名前:ID の形式で1行ずつ入力&#10;例：&#10;EMS:123&#10;DHL Express:456&#10;Australia Post:789" style="min-height:90px;font-family:monospace;font-size:12px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap;">
+        <button type="button" onclick="saveShipMethods()" style="padding:6px 14px;background:#c8f060;color:#0f0f0f;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">保存する</button>
+        <span id="shipSaveMsg" style="font-size:11px;color:#c8f060;display:none;">✅ 保存しました</span>
+        <a href="https://www.buyma.com/my/shipping_methods/" target="_blank" style="font-size:11px;color:#60d4f0;">IDを確認する →</a>
+      </div>
+    </div>
+
+    <!-- 配送方法チェックボックス（設定後に表示） -->
+    <div class="fs" id="shipCheckArea" style="display:none;">
+      <label>配送方法を選択 <span class="req">*</span></label>
+      <div id="shipChecks" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
     </div>
 
     <button class="btn btn-p" onclick="startGen()">✨ AIで出品文を生成する</button>
@@ -433,13 +443,15 @@ let imgs=[], selBrandId=null, selBrandName='', selCatId=null, selCatTop='', selT
 
 // 初期化
 window.addEventListener('load',()=>{
-  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt'), sm=localStorage.getItem('smids');
+  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt'), smd=localStorage.getItem('smdefs');
   if(k) document.getElementById('apiKey').value=k;
   if(t) document.getElementById('buymaToken').value=t;
-  if(sm) document.getElementById('shipMethodIds').value=sm;
+  const defaultDefs='Australia Post（スタンダード 5〜14日）:918102\n日本郵便 - ゆうパック:965049\nDHL EXPRESS:970663';
+  const defsVal=smd||defaultDefs;
+  document.getElementById('shipMethodDefs').value=defsVal;
+  renderShipChecks(defsVal);
   document.getElementById('apiKey').addEventListener('input',e=>localStorage.setItem('cak',e.target.value));
   document.getElementById('buymaToken').addEventListener('input',e=>localStorage.setItem('bmt',e.target.value));
-  document.getElementById('shipMethodIds').addEventListener('input',e=>localStorage.setItem('smids',e.target.value));
 
   // お気に入りブランド
   const fb=document.getElementById('favbrands');
@@ -669,6 +681,28 @@ function autoCalcPrice(){
   calcProfit();
 }
 
+// 配送方法設定
+function saveShipMethods(){
+  const val=document.getElementById('shipMethodDefs').value.trim();
+  localStorage.setItem('smdefs',val);
+  renderShipChecks(val);
+  const msg=document.getElementById('shipSaveMsg');
+  msg.style.display='inline';setTimeout(()=>msg.style.display='none',2000);
+}
+function renderShipChecks(defs){
+  const lines=defs.split('\n').map(s=>s.trim()).filter(s=>s.includes(':'));
+  const area=document.getElementById('shipCheckArea');
+  const box=document.getElementById('shipChecks');
+  if(!lines.length){area.style.display='none';return;}
+  box.innerHTML=lines.map((line,i)=>{
+    const [label,id]=line.split(':');
+    return `<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:8px;cursor:pointer;font-size:13px;">
+      <input type="checkbox" id="sm_${i}" value="${id.trim()}" style="width:auto;accent-color:#c8f060;"> ${label.trim()}
+    </label>`;
+  }).join('');
+  area.style.display='block';
+}
+
 // タグ
 function tgl(el){el.classList.toggle('sel');const t=el.dataset.tag;selTags=el.classList.contains('sel')?[...selTags,t]:selTags.filter(x=>x!==t);}
 
@@ -807,12 +841,10 @@ async function submitBuyma(){
   if(imgUrls.length===0){alert('出品用画像URLを入力してください');return;}
   const images=imgUrls.slice(0,20).map((path,i)=>({path,position:i+1}));
 
-  // 配送方法ID検証
-  const smidsRaw=document.getElementById('shipMethodIds').value.trim();
-  if(!smidsRaw){alert('BUYMA配送方法IDを入力してください\nhttps://www.buyma.com/my/shipping_methods/ で確認できます');return;}
-  const shipping_methods=smidsRaw.split(',')
-    .map(s=>({shipping_method_id:parseInt(s.trim())}))
-    .filter(m=>!isNaN(m.shipping_method_id));
+  // 配送方法（チェックボックスから取得）
+  const checkedShip=Array.from(document.querySelectorAll('#shipChecks input[type=checkbox]:checked'));
+  if(checkedShip.length===0){alert('配送方法を1つ以上選択してください');return;}
+  const shipping_methods=checkedShip.map(cb=>({shipping_method_id:parseInt(cb.value)}));
 
   const name=document.getElementById('rname').value.trim();
   const comment=document.getElementById('rcomment').value.trim();
