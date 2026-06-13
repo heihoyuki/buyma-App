@@ -149,7 +149,7 @@ textarea{resize:vertical;line-height:1.6;}
         <div class="mtab" onclick="setMode('txt')">📋 テキスト</div>
       </div>
       <div class="mpanel active" id="mp-ss">
-        <label for="fileInput" style="display:block;cursor:pointer;">
+        <label style="display:block;cursor:pointer;">
           <div class="upbox" id="upbox">
             <div class="icon">📷</div>
             <h3>商品写真 または スクショ</h3>
@@ -496,6 +496,7 @@ window.addEventListener('load',()=>{
   box.addEventListener('dragover',e=>{e.preventDefault();box.style.borderColor='#c8f060';});
   box.addEventListener('dragleave',()=>box.style.borderColor='');
   box.addEventListener('drop',e=>{e.preventDefault();box.style.borderColor='';addImgs(e.dataTransfer.files);});
+  box.addEventListener('click',()=>fi.click());
   fi.addEventListener('change',e=>{addImgs(e.target.files);fi.value='';});
 
   // テキストモード自動解析
@@ -598,7 +599,7 @@ function searchBrand(q){
   if(!q||q.length<1){dd.classList.remove('open');return;}
   const res=ALL_BRANDS.filter(b=>b[1].toLowerCase().includes(q.toLowerCase())).slice(0,25);
   if(!res.length){dd.classList.remove('open');return;}
-  dd.innerHTML=res.map(b=>`<div class="bopt" onclick="selBrand(${b[0]},${JSON.stringify(b[1])},null)">${b[1]}</div>`).join('');
+  dd.innerHTML=res.map(b=>`<div class="bopt" onmousedown="event.preventDefault();selBrand(${b[0]},${JSON.stringify(b[1])},null)" ontouchend="event.preventDefault();selBrand(${b[0]},${JSON.stringify(b[1])},null)">${b[1]}</div>`).join('');
   dd.classList.add('open');
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.bsearch'))document.getElementById('bdd').classList.remove('open');});
