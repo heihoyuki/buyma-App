@@ -149,7 +149,7 @@ textarea{resize:vertical;line-height:1.6;}
         <div class="mtab" onclick="setMode('txt')">📋 テキスト</div>
       </div>
       <div class="mpanel active" id="mp-ss">
-        <label for="fileInput" style="display:block;cursor:pointer;">
+        <label style="display:block;cursor:pointer;">
           <div class="upbox" id="upbox">
             <div class="icon">📷</div>
             <h3>商品写真 または スクショ</h3>
@@ -486,6 +486,7 @@ window.addEventListener('load',()=>{
   // 写真アップ
   const box=document.getElementById('upbox');
   const fi=document.getElementById('fileInput');
+  box.addEventListener('click',()=>{fi.value='';fi.click();});
   box.addEventListener('dragover',e=>{e.preventDefault();box.style.borderColor='#c8f060';});
   box.addEventListener('dragleave',()=>box.style.borderColor='');
   box.addEventListener('drop',e=>{e.preventDefault();box.style.borderColor='';addImgs(e.dataTransfer.files);});
