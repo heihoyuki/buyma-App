@@ -849,7 +849,7 @@ async function startGen(){
   const name=document.getElementById('pname').value.trim();
   const price=document.getElementById('price').value.trim();
   const catId=document.getElementById('catId').value;
-  if(!selBrandId){alert('ブランドを選択してください');return;}
+  if(selBrandId===null){alert('ブランドを選択してください');return;}
   if(!catId){alert('カテゴリを選択してください');return;}
   if(!price){alert('販売価格を入力してください');return;}
   if(!key){alert('Claude APIキーを入力してください');return;}
