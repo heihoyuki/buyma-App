@@ -351,6 +351,11 @@ textarea{resize:vertical;line-height:1.6;}
 
     <!-- API Keys -->
     <div class="fs">
+      <label>imgBB APIキー <span style="font-size:11px;font-weight:normal;color:#555;">（写真の自動アップロード用・無料）</span></label>
+      <input type="text" id="imgbbKey" placeholder="取得したAPIキーを入力..." style="font-family:monospace;font-size:12px;" autocomplete="off">
+      <div style="font-size:11px;color:#555;margin-top:5px;"><a href="https://api.imgbb.com/" target="_blank" style="color:#60d4f0;">api.imgbb.com</a> で無料取得 → 次回自動入力</div>
+    </div>
+    <div class="fs">
       <label>Claude API Key <span class="req">*</span></label>
       <input type="text" id="apiKey" placeholder="sk-ant-..." style="font-family:monospace;font-size:12px;" autocomplete="off">
       <div style="font-size:11px;color:#555;margin-top:5px;">ブラウザ内のみ使用・外部送信なし・次回自動入力</div>
@@ -443,15 +448,17 @@ let imgs=[], selBrandId=null, selBrandName='', selCatId=null, selCatTop='', selT
 
 // 初期化
 window.addEventListener('load',()=>{
-  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt'), smd=localStorage.getItem('smdefs');
+  const k=localStorage.getItem('cak'), t=localStorage.getItem('bmt'), smd=localStorage.getItem('smdefs'), ib=localStorage.getItem('ibk');
   if(k) document.getElementById('apiKey').value=k;
   if(t) document.getElementById('buymaToken').value=t;
+  if(ib) document.getElementById('imgbbKey').value=ib;
   const defaultDefs='Australia Post（スタンダード 5〜14日）:918102\n日本郵便 - ゆうパック:965049\nDHL EXPRESS:970663';
   const defsVal=smd||defaultDefs;
   document.getElementById('shipMethodDefs').value=defsVal;
   renderShipChecks(defsVal);
   document.getElementById('apiKey').addEventListener('input',e=>localStorage.setItem('cak',e.target.value));
   document.getElementById('buymaToken').addEventListener('input',e=>localStorage.setItem('bmt',e.target.value));
+  document.getElementById('imgbbKey').addEventListener('input',e=>localStorage.setItem('ibk',e.target.value));
 
   // お気に入りブランド
   const fb=document.getElementById('favbrands');
@@ -479,7 +486,6 @@ window.addEventListener('load',()=>{
   // 写真アップ
   const box=document.getElementById('upbox');
   const fi=document.getElementById('fileInput');
-  box.addEventListener('click',()=>fi.click());
   box.addEventListener('dragover',e=>{e.preventDefault();box.style.borderColor='#c8f060';});
   box.addEventListener('dragleave',()=>box.style.borderColor='');
   box.addEventListener('drop',e=>{e.preventDefault();box.style.borderColor='';addImgs(e.dataTransfer.files);});
@@ -500,20 +506,67 @@ function setMode(m){
 
 // 写真
 function addImgs(files){
+  const ibKey=document.getElementById('imgbbKey').value.trim();
   Array.from(files).forEach(f=>{
     if(!f.type.startsWith('image/')) return;
     const r=new FileReader();
-    r.onload=e=>{imgs.push({file:f,dataUrl:e.target.result});renderPreviews();};
+    r.onload=async e=>{
+      const dataUrl=e.target.result;
+      const idx=imgs.length;
+      imgs.push({file:f,dataUrl,url:null,uploading:!!ibKey});
+      renderPreviews();
+      if(ibKey){
+        try{
+          const base64=dataUrl.split(',')[1];
+          const fd=new FormData();
+          fd.append('key',ibKey);
+          fd.append('image',base64);
+          const res=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
+          const d=await res.json();
+          if(d.success){
+            imgs[idx].url=d.data.url;
+            imgs[idx].uploading=false;
+            updateListingImgUrls();
+          }else{
+            imgs[idx].uploading=false;
+            imgs[idx].error=true;
+          }
+        }catch{
+          imgs[idx].uploading=false;
+          imgs[idx].error=true;
+        }
+        renderPreviews();
+      }
+    };
     r.readAsDataURL(f);
   });
 }
+function updateListingImgUrls(){
+  const urls=imgs.map(i=>i.url).filter(Boolean);
+  document.getElementById('listingImgUrls').value=urls.join('\n');
+}
 function renderPreviews(){
   const g=document.getElementById('pgrid'), c=document.getElementById('pcount');
-  g.innerHTML=imgs.map((img,i)=>`<div class="pitem"><img src="${img.dataUrl}"><button class="pdel" onclick="delImg(${i})">×</button></div>`).join('');
+  g.innerHTML=imgs.map((img,i)=>`
+    <div class="pitem">
+      <img src="${img.dataUrl}">
+      <button class="pdel" onclick="delImg(${i})">×</button>
+      ${img.uploading?'<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,.7);color:#c8f060;font-size:10px;text-align:center;border-radius:4px;padding:2px;">アップ中...</div>':''}
+      ${img.url?'<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,.7);color:#c8f060;font-size:10px;text-align:center;border-radius:4px;padding:2px;">✅ URL取得済み</div>':''}
+      ${img.error?'<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(240,96,96,.8);color:#fff;font-size:10px;text-align:center;border-radius:4px;padding:2px;">⚠️ 失敗</div>':''}
+    </div>`).join('');
   c.style.display=imgs.length?'block':'none';
-  c.textContent=`✅ ${imgs.length}枚アップロード済み`;
+  const done=imgs.filter(i=>i.url).length;
+  const uploading=imgs.filter(i=>i.uploading).length;
+  if(uploading>0) c.textContent=`⏳ ${uploading}枚アップロード中... （${done}/${imgs.length}完了）`;
+  else if(done>0) c.textContent=`✅ ${done}枚のURLを自動取得しました`;
+  else c.textContent=`📷 ${imgs.length}枚選択済み（imgBB APIキー未設定のためURL未取得）`;
 }
-function delImg(i){imgs.splice(i,1);renderPreviews();}
+function delImg(i){
+  imgs.splice(i,1);
+  updateListingImgUrls();
+  renderPreviews();
+}
 
 // ブランド
 function selBrand(id,name,el){
@@ -734,17 +787,20 @@ async function doFetchUrl(){
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`以下のURLの商品情報をJSONのみで返してください:
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,
+        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3},{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。直接取得できない場合はweb_searchで同じ商品を検索してください:
 ${url}
 
 {"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"説明","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2"]}`}]})
     });
     const data=await res.json();
-    const txt=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const p=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    if(data.error) throw new Error(data.error.message);
+    const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const m=txt.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('JSONが見つかりませんでした');
+    const p=JSON.parse(m[0]);
     if(p.product_name) document.getElementById('pname').value=p.product_name;
     if(p.price_aud){document.getElementById('costPrice').value=p.price_aud;calcProfit();}
     const extra=[p.description,p.material,p.color].filter(Boolean).join('\n');
@@ -753,7 +809,7 @@ ${url}
     document.getElementById('srcUrl').value=url;
     updateNameCount();
     st.className='ust ok';st.textContent='✅ 読み取り完了！';
-  }catch(e){st.className='ust err';st.textContent='⚠️ 読み取りできませんでした。スクショかテキストモードをお試しください。';}
+  }catch(e){st.className='ust err';st.textContent='⚠️ 読み取りできませんでした（'+e.message+'）。スクショかテキストモードをお試しください。';}
 }
 
 // テキストモード自動解析
@@ -891,7 +947,7 @@ async function submitBuyma(){
       buying_area_id:parseInt(document.getElementById('buyArea').value),
       shipping_area_id:parseInt(document.getElementById('shipArea').value),
       available_until,
-      images:images.length>0?images:[{path:'https://placehold.co/600x600.jpg',position:1}],
+      ...(images.length>0?{images}:{}),
       shipping_methods,
       options,
       variants,
