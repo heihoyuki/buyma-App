@@ -496,6 +496,7 @@ window.addEventListener('load',()=>{
   box.addEventListener('dragover',e=>{e.preventDefault();box.style.borderColor='#c8f060';});
   box.addEventListener('dragleave',()=>box.style.borderColor='');
   box.addEventListener('drop',e=>{e.preventDefault();box.style.borderColor='';addImgs(e.dataTransfer.files);});
+  box.addEventListener('click',e=>{if(e.target!==fi)fi.click();});
   fi.addEventListener('change',e=>{addImgs(e.target.files);fi.value='';});
 
   // テキストモード自動解析
