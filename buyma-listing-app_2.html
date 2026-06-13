@@ -149,12 +149,13 @@ textarea{resize:vertical;line-height:1.6;}
         <div class="mtab" onclick="setMode('txt')">📋 テキスト</div>
       </div>
       <div class="mpanel active" id="mp-ss">
-        <div class="upbox" id="upbox" style="position:relative;">
-          <input type="file" accept="image/*" multiple id="fileInput" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;font-size:100px;">
+        <div class="upbox" id="upbox">
           <div class="icon">📷</div>
           <h3>商品写真 または スクショ</h3>
           <p>📱 スマホ：タップしてライブラリから選択<br>💻 PC：クリック または ドラッグ＆ドロップ<br>複数枚OK → 商品名・価格・説明を自動読み取り</p>
+          <button type="button" onclick="document.getElementById('fileInput').click()" style="margin-top:12px;padding:8px 24px;background:#c8f060;color:#0f0f0f;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">写真を選ぶ</button>
         </div>
+        <input type="file" accept="image/*" multiple id="fileInput" style="display:none;">
         <div class="pcount" id="pcount"></div>
         <div class="pgrid" id="pgrid"></div>
       </div>
