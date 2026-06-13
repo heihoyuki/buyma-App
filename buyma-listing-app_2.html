@@ -155,7 +155,7 @@ textarea{resize:vertical;line-height:1.6;}
           <p>📱 スマホ：タップしてライブラリから選択<br>💻 PC：クリック または ドラッグ＆ドロップ<br>複数枚OK → 商品名・価格・説明を自動読み取り</p>
           <button type="button" onclick="document.getElementById('fileInput').click()" style="margin-top:12px;padding:8px 24px;background:#c8f060;color:#0f0f0f;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">写真を選ぶ</button>
         </div>
-        <input type="file" accept="image/*" multiple id="fileInput" style="display:none;">
+        <input type="file" accept="image/*" multiple id="fileInput" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;">
         <div class="pcount" id="pcount"></div>
         <div class="pgrid" id="pgrid"></div>
       </div>
