@@ -980,13 +980,13 @@ async function submitBuyma(){
       body:JSON.stringify(payload)
     });
     cm('mInfo');
-    if(res.status===201){
-      const d=await res.json();
-      document.getElementById('oktext').textContent=`出品リクエストを送信しました！\nリクエストID: ${d.request_uid}\n反映まで少しお待ちください。`;
+    const rawText=await res.text();
+    let d;try{d=JSON.parse(rawText);}catch(e){d=null;}
+    if(res.status===201||res.status===202){
+      document.getElementById('oktext').textContent=`出品リクエスト送信完了！\nステータス: ${res.status}\nレスポンス:\n${rawText}`;
       document.getElementById('mOK').classList.add('open');
     }else{
-      const err=await res.json();
-      alert('出品エラー: '+JSON.stringify(err,null,2));
+      alert(`出品エラー (${res.status}):\n${rawText}`);
     }
   }catch(e){cm('mInfo');alert('通信エラー: '+e.message);}
 }
