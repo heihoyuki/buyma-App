@@ -932,23 +932,28 @@ async function submitBuyma(){
   const exp=new Date();exp.setDate(exp.getDate()+90);
   const available_until=`${exp.getFullYear()}/${String(exp.getMonth()+1).padStart(2,'0')}/${String(exp.getDate()).padStart(2,'0')}`;
 
-  // バリエーション → options + variants
+  // 画像チェック（必須）
+  if(images.length===0){alert('商品画像が必要です。写真を追加するか、画像URLを入力してください。');return;}
+
+  // バリエーション → options + variants（サイズとカラーの両方が必須）
   const varRows=getVariants();
-  const sizeVals=[...new Set(varRows.map(v=>v.size).filter(Boolean))];
-  const colorVals=[...new Set(varRows.map(v=>v.color).filter(Boolean))];
+  const sizeVals=[...new Set(varRows.map(v=>v.size||'FREE').filter(Boolean))];
+  const colorVals=[...new Set(varRows.map(v=>v.color||'その他').filter(Boolean))];
   const options=[];
   let pos=1;
   sizeVals.forEach(val=>options.push({type:'size',value:val,position:pos++,master_id:0}));
   colorVals.forEach(val=>options.push({type:'color',value:val,position:pos++,master_id:0}));
-  if(options.length===0) options.push({type:'size',value:'FREE',position:1,master_id:0});
 
   const variants=varRows.length>0?varRows.map(v=>{
-    const vopts=[];
-    if(v.size) vopts.push({type:'size',value:v.size});
-    if(v.color) vopts.push({type:'color',value:v.color});
-    if(vopts.length===0) vopts.push({type:'size',value:'FREE'});
-    return{options:vopts,stock_type:v.type==='order'?'purchase_for_order':'stock_in_hand',stocks:v.qty};
-  }):[{options:[{type:'size',value:'FREE'}],stock_type:'stock_in_hand',stocks:1}];
+    return{
+      options:[
+        {type:'size',value:v.size||'FREE'},
+        {type:'color',value:v.color||'その他'}
+      ],
+      stock_type:v.type==='order'?'purchase_for_order':'stock_in_hand',
+      stocks:v.qty
+    };
+  }):[{options:[{type:'size',value:'FREE'},{type:'color',value:'その他'}],stock_type:'purchase_for_order',stocks:100}];
 
   document.getElementById('mtitle').textContent='⏳ 出品中...';
   document.getElementById('mtext').textContent='BUYMAへ送信しています。しばらくお待ちください。';
@@ -968,7 +973,7 @@ async function submitBuyma(){
       buying_area_id:parseInt(document.getElementById('buyArea').value),
       shipping_area_id:parseInt(document.getElementById('shipArea').value),
       available_until,
-      ...(images.length>0?{images}:{}),
+      images,
       shipping_methods,
       options,
       variants,
