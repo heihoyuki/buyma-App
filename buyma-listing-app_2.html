@@ -970,6 +970,19 @@ async function submitBuyma(){
   try{
     const srcUrl=document.getElementById('srcUrl').value||'';
     const refNum='REF-'+Date.now();
+    // 非公開メモ：利益計算情報を自動記録
+    const _cost=document.getElementById('costPrice').value||'';
+    const _cur=document.getElementById('costCur').value||'AUD';
+    const _rate=document.getElementById('fxRate').value||'';
+    const _dom=document.getElementById('domShip').value||'';
+    const _intl=document.getElementById('intlShip').value||'';
+    const buyerNoteLines=[];
+    if(srcUrl) buyerNoteLines.push('【買い付け先】'+srcUrl);
+    if(_cost) buyerNoteLines.push('【買い付け金額】'+_cost+' '+_cur);
+    if(_rate) buyerNoteLines.push('【レート】1'+_cur+'='+_rate+'円');
+    if(_dom) buyerNoteLines.push('【国内送料(AUS)】'+_dom+' AUD');
+    if(_intl) buyerNoteLines.push('【国際送料(AUS→JP)】'+_intl+' AUD');
+    const buyerNotes=buyerNoteLines.join('\n');
     const payload={product:{
       control:'publish',
       reference_number:refNum,
@@ -986,6 +999,7 @@ async function submitBuyma(){
       options,
       variants,
       ...(orderQty!==undefined?{order_quantity:orderQty}:{}),
+      ...(buyerNotes?{buyer_notes:buyerNotes}:{}),
       ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{})
     }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
