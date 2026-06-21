@@ -858,7 +858,8 @@ async function startGen(){
   const memo=document.getElementById('memo').value;
   const paste=document.getElementById('pasteText').value;
   const extra=[memo,paste].filter(Boolean).join('\n');
-  const brandLabel=selBrandName.replace(/\(.*?\)/g,'').trim();
+  // ブランドなし（id=0）の場合は空文字で扱う
+  const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
   const variants=getVariants();
   const varInfo=variants.length?variants.map(v=>`${v.size||'−'} / ${v.color||'−'} × ${v.stock}個`).join(', '):'';
 
@@ -895,9 +896,21 @@ async function startGen(){
 }
 
 function buildResult(parsed){
-  const brandLabel=selBrandName.replace(/\(.*?\)/g,'').trim();
-  let pname=parsed.product_name||(brandLabel+' '+document.getElementById('pname').value);
-let len=0,cut=0;for(let i=0;i<pname.length;i++){len+=(pname.charCodeAt(i)>127?2:1);if(len<=60)cut=i+1;}pname=pname.slice(0,cut);
+  // ブランドなし（id=0）の場合はブランド名を使わない
+  const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
+  let pname=parsed.product_name||(brandLabel?(brandLabel+' '):'')+document.getElementById('pname').value;
+  // 「ブランドなし」が先頭についてたら削除
+  pname=pname.replace(/^ブランドなし\s*/,'').trim();
+  // 60文字（半角換算）に収める。単語の途中で切れないよう最後のスペース位置で切る
+  let len=0,cut=0,lastSpace=0;
+  for(let i=0;i<pname.length;i++){
+    len+=(pname.charCodeAt(i)>127?2:1);
+    if(pname[i]===' ')lastSpace=i;
+    if(len<=60)cut=i+1;
+    else break;
+  }
+  if(len>60&&lastSpace>0&&cut<pname.length) pname=pname.slice(0,lastSpace).trim();
+  else pname=pname.slice(0,cut);
   document.getElementById('rname').value=pname;
   updateRCount();
   document.getElementById('rcomment').value=(parsed.description||'')+'\n\n'+FIXED_COMMENT;
