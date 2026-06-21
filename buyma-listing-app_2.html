@@ -940,9 +940,9 @@ async function submitBuyma(){
   const sizeVals=[...new Set(varRows.map(v=>v.size||'FREE').filter(Boolean))];
   const colorVals=[...new Set(varRows.map(v=>v.color||'その他').filter(Boolean))];
   const options=[];
-  let pos=1;
-  sizeVals.forEach(val=>options.push({type:'size',value:val,position:pos++,master_id:0}));
-  colorVals.forEach(val=>options.push({type:'color',value:val,position:pos++,master_id:0}));
+  let sizePos=1,colorPos=1;
+  sizeVals.forEach(val=>options.push({type:'size',value:val,position:sizePos++}));
+  colorVals.forEach(val=>options.push({type:'color',value:val,position:colorPos++}));
 
   const variants=varRows.length>0?varRows.map(v=>{
     return{
