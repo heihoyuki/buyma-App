@@ -771,7 +771,7 @@ function renderShipChecks(defs){
   box.innerHTML=lines.map((line,i)=>{
     const [label,id]=line.split(':');
     return `<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:8px;cursor:pointer;font-size:13px;">
-      <input type="checkbox" id="sm_${i}" value="${id.trim()}" style="width:auto;accent-color:#c8f060;"> ${label.trim()}
+      <input type="checkbox" id="sm_${i}" value="${id.trim()}" checked style="width:auto;accent-color:#c8f060;"> ${label.trim()}
     </label>`;
   }).join('');
   area.style.display='block';
