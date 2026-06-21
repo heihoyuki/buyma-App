@@ -948,15 +948,20 @@ async function submitBuyma(){
   colorVals.forEach(val=>options.push({type:'color',value:val,position:colorPos++,master_id:getColorMasterId(val)}));
 
   const variants=varRows.length>0?varRows.map(v=>{
-    return{
+    const st=v.type==='order'?'purchase_for_order':'stock_in_hand';
+    const vObj={
       options:[
         {type:'size',value:v.size||'FREE'},
         {type:'color',value:v.color||'その他'}
       ],
-      stock_type:v.type==='order'?'purchase_for_order':'stock_in_hand',
-      stocks:v.qty
+      stock_type:st
     };
-  }):[{options:[{type:'size',value:'FREE'},{type:'color',value:'その他'}],stock_type:'purchase_for_order',stocks:100}];
+    if(st==='stock_in_hand') vObj.stocks=v.qty;
+    return vObj;
+  }):[{options:[{type:'size',value:'FREE'},{type:'color',value:'その他'}],stock_type:'purchase_for_order'}];
+  // purchase_for_order の場合は order_quantity をproductレベルで指定
+  const hasPurchaseOrder=variants.some(v=>v.stock_type==='purchase_for_order');
+  const orderQty=hasPurchaseOrder?(varRows.length>0?Math.max(...varRows.filter(v=>v.type==='order').map(v=>v.qty||10)):10):undefined;
 
   document.getElementById('mtitle').textContent='⏳ 出品中...';
   document.getElementById('mtext').textContent='BUYMAへ送信しています。しばらくお待ちください。';
@@ -980,6 +985,7 @@ async function submitBuyma(){
       shipping_methods,
       options,
       variants,
+      ...(orderQty!==undefined?{order_quantity:orderQty}:{}),
       ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{})
     }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
