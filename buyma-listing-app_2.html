@@ -873,7 +873,7 @@ async function startGen(){
 追加情報: ${extra||'なし'}
 
 以下の形式でJSONのみで返してください（前後のテキスト不要）:
-{"product_name":"${brandLabel} 商品名（全角換算60文字以内）","description":"商品の魅力を伝える説明文（200〜400文字）"}`;
+{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）"}`;
 
   const messages=imageContent.length>0
     ?[{role:'user',content:[...imageContent,{type:'text',text:prompt}]}]
@@ -898,9 +898,15 @@ async function startGen(){
 function buildResult(parsed){
   // ブランドなし（id=0）の場合はブランド名を使わない
   const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
-  let pname=parsed.product_name||(brandLabel?(brandLabel+' '):'')+document.getElementById('pname').value;
+  let pname=parsed.product_name||((brandLabel?'['+brandLabel+'] ':'')+document.getElementById('pname').value);
   // 「ブランドなし」が先頭についてたら削除
   pname=pname.replace(/^ブランドなし\s*/,'').trim();
+  // ブランド名が[ブランド名]形式になっていない場合は変換
+  if(brandLabel&&!pname.startsWith('[')){
+    // ブランド名がそのまま先頭についてたら[]で囲む
+    if(pname.startsWith(brandLabel)){pname='['+brandLabel+']'+pname.slice(brandLabel.length);}
+    else{pname='['+brandLabel+'] '+pname;}
+  }
   // 60文字（半角換算）に収める。単語の途中で切れないよう最後のスペース位置で切る
   let len=0,cut=0,lastSpace=0;
   for(let i=0;i<pname.length;i++){
