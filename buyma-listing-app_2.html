@@ -1020,7 +1020,7 @@ async function submitBuyma(){
       ...(orderQty!==undefined?{order_quantity:orderQty}:{}),
       ...(buyerNotes?{buyer_notes:buyerNotes}:{}),
       ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{}),
-      ...(document.getElementById('rlinks').value.trim()?{size_note:document.getElementById('rlinks').value.trim()}:{})
+      ...(document.getElementById('rlinks').value.trim()?{variations_note:document.getElementById('rlinks').value.trim()}:{})
     }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
       method:'POST',
