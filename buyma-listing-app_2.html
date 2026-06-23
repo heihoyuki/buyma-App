@@ -809,7 +809,7 @@ async function doFetchUrl(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
         tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3},{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。直接取得できない場合はweb_searchで同じ商品を検索してください:
 ${url}
@@ -863,7 +863,7 @@ async function startGen(){
   const variants=getVariants();
   const varInfo=variants.length?variants.map(v=>`${v.size||'−'} / ${v.color||'−'} × ${v.stock}個`).join(', '):'';
 
-  const imageContent=imgs.slice(0,4).map(img=>({type:'image',source:{type:'base64',media_type:img.file.type,data:img.dataUrl.split(',')[1]}}));
+  const imageContent=imgs.slice(0,2).map(img=>({type:'image',source:{type:'base64',media_type:img.file.type,data:img.dataUrl.split(',')[1]}}));
   const prompt=`あなたはBUYMAのパーソナルショッパーです。以下の商品の日本語説明文を生成してください。
 
 ブランド: ${brandLabel}
@@ -883,7 +883,7 @@ async function startGen(){
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages})
     });
     const data=await res.json();
     if(data.error) throw new Error(data.error.message);
@@ -1019,7 +1019,8 @@ async function submitBuyma(){
       variants,
       ...(orderQty!==undefined?{order_quantity:orderQty}:{}),
       ...(buyerNotes?{buyer_notes:buyerNotes}:{}),
-      ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{})
+      ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{}),
+      ...(document.getElementById('rlinks').value.trim()?{size_note:document.getElementById('rlinks').value.trim()}:{})
     }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
       method:'POST',
