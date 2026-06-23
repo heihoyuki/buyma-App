@@ -873,7 +873,7 @@ async function startGen(){
 追加情報: ${extra||'なし'}
 
 以下の形式でJSONのみで返してください（前後のテキスト不要）:
-{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）"}`;
+{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）。文章は適度に改行を入れて読みやすくすること。"}` ;
 
   const messages=imageContent.length>0
     ?[{role:'user',content:[...imageContent,{type:'text',text:prompt}]}]
@@ -919,7 +919,7 @@ function buildResult(parsed){
   else pname=pname.slice(0,cut);
   document.getElementById('rname').value=pname;
   updateRCount();
-  document.getElementById('rcomment').value=(parsed.description||'')+'\n\n'+FIXED_COMMENT;
+  document.getElementById('rcomment').value=(parsed.description||'')+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT;
 
   // 関連リンク生成（ブランドリンク＋カテゴリリンク）
   const links=[];
