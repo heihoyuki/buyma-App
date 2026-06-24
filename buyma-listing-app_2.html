@@ -673,8 +673,27 @@ function addVariant(){
         <input type="text" placeholder="例：FREE / S / M" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;">
       </div>
       <div>
-        <div style="font-size:12px;color:#888;margin-bottom:5px;">カラー</div>
-        <input type="text" placeholder="例：ゴールド" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;">
+        <div style="font-size:12px;color:#888;margin-bottom:5px;">カラー系統</div>
+        <select class="colorsel" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
+          <option value="1">⬜ ホワイト</option>
+          <option value="2">⬛ ブラック</option>
+          <option value="3">🔲 グレー</option>
+          <option value="4">🟫 ブラウン</option>
+          <option value="5">🟤 ベージュ</option>
+          <option value="6">💚 グリーン</option>
+          <option value="7">💙 ブルー</option>
+          <option value="8">💜 パープル</option>
+          <option value="9">💛 イエロー</option>
+          <option value="10">🩷 ピンク</option>
+          <option value="11">❤️ レッド</option>
+          <option value="12">🟠 オレンジ</option>
+          <option value="13">🩶 シルバー</option>
+          <option value="14">🌟 ゴールド</option>
+          <option value="15">🫧 クリア</option>
+          <option value="16">🔵 ネイビー</option>
+          <option value="99" selected>🎨 マルチカラー</option>
+        </select>
+        <input type="text" class="colortxt" placeholder="色名（任意・例：オフホワイト）" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;">
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -698,19 +717,26 @@ function delVariant(id){
   const el=document.getElementById(id);
   if(document.querySelectorAll('.varrow').length>1) el.remove();
 }
+const COLOR_NAMES={1:'ホワイト',2:'ブラック',3:'グレー',4:'ブラウン',5:'ベージュ',6:'グリーン',7:'ブルー',8:'パープル',9:'イエロー',10:'ピンク',11:'レッド',12:'オレンジ',13:'シルバー',14:'ゴールド',15:'クリア',16:'ネイビー',99:'マルチカラー'};
 function getVariants(){
   return Array.from(document.querySelectorAll('.varrow')).map(row=>{
-    const ins=row.querySelectorAll('input[type=text], input[type=number]');
+    const sizeIn=row.querySelector('input[type=text]:not(.colortxt)');
+    const colorSel=row.querySelector('select.colorsel');
+    const colorTxt=row.querySelector('input.colortxt');
     const radios=row.querySelectorAll('input[type=radio]');
-    const type=Array.from(radios).find(r=>r.checked)?.value||'stock';
+    const type=Array.from(radios).find(r=>r.checked)?.value||'order';
     const qty=row.querySelector('input[type=number]');
+    const colorMasterId=colorSel?parseInt(colorSel.value):99;
+    const colorFamily=COLOR_NAMES[colorMasterId]||'マルチカラー';
+    const colorName=(colorTxt?.value?.trim())||colorFamily;
     return {
-      size:ins[0]?ins[0].value.trim():'',
-      color:ins[1]?ins[1].value.trim():'',
+      size:sizeIn?sizeIn.value.trim():'',
+      color:colorName,
+      colorMasterId:colorMasterId,
       type:type,
       qty:parseInt(qty?.value)||1
     };
-  }).filter(v=>v.size||v.color);
+  }).filter(v=>v.size||v.colorMasterId!==99||(v.color&&v.color!=='マルチカラー'));
 }
 
 // 買い付け国連動
@@ -963,8 +989,12 @@ async function submitBuyma(){
   function getColorMasterId(name){const n=name.toLowerCase();if(COLOR_MASTER[name])return COLOR_MASTER[name];if(COLOR_MASTER[n])return COLOR_MASTER[n];for(const[k,id]of Object.entries(COLOR_MASTER)){if(name.includes(k)||n.includes(k.toLowerCase()))return id;}return 99;}
   const options=[];
   let sizePos=1,colorPos=1;
+  // カラーはvarRowsのcolorMasterIdを使う（ドロップダウン選択値）
+  const colorMap=new Map();
+  varRows.forEach(v=>{const n=v.color||'マルチカラー';if(!colorMap.has(n))colorMap.set(n,v.colorMasterId??99);});
+  if(colorMap.size===0)colorMap.set('マルチカラー',99);
   sizeVals.forEach(val=>options.push({type:'size',value:val,position:sizePos++,master_id:0}));
-  colorVals.forEach(val=>options.push({type:'color',value:val,position:colorPos++,master_id:getColorMasterId(val)}));
+  colorMap.forEach((masterId,name)=>options.push({type:'color',value:name,position:colorPos++,master_id:masterId}));
 
   const variants=varRows.length>0?varRows.map(v=>{
     const st=v.type==='order'?'purchase_for_order':'stock_in_hand';
