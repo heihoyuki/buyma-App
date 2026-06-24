@@ -674,7 +674,7 @@ function addVariant(){
       </div>
       <div>
         <div style="font-size:12px;color:#888;margin-bottom:5px;">カラー系統</div>
-        <select class="colorsel" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
+        <select class="colorsel" onchange="var t=this.closest('.varrow').querySelector('.colortxt');t.value=this.options[this.selectedIndex].text.split(' ').slice(1).join(' ');" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
           <option value="1">⬜ ホワイト</option>
           <option value="2">⬛ ブラック</option>
           <option value="3">🔲 グレー</option>
@@ -709,6 +709,10 @@ function addVariant(){
       </div>
     </div>`;
   document.getElementById('varList').appendChild(div);
+  // ドロップダウンの初期値をテキスト欄に自動入力
+  const initSel=div.querySelector('.colorsel');
+  const initTxt=div.querySelector('.colortxt');
+  if(initSel&&initTxt) initTxt.value=initSel.options[initSel.selectedIndex].text.split(' ').slice(1).join(' ');
 }
 function updateVarType(id, type){
   // 将来的な処理用
