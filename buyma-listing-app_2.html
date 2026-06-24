@@ -841,10 +841,12 @@ async function doFetchUrl(){
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
         tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3},{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。直接取得できない場合はweb_searchで同じ商品を検索してください:
+        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。ShopifyサイトはURLに.jsonを末尾につけた形式（例: /products/xxx.json）でも取得を試みてください。直接取得できない場合はweb_searchで同じ商品を検索してください:
 ${url}
 
-{"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"説明","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2"]}`}]})
+必ずdescription（商品説明）とdetails（サイズ・素材・特徴などの仕様詳細。ページに記載のある情報を全て含める）を両方取得すること。
+
+{"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2"]}`}]})
     });
     const data=await res.json();
     if(data.error) throw new Error(data.error.message);
@@ -854,7 +856,7 @@ ${url}
     const p=JSON.parse(m[0]);
     if(p.product_name) document.getElementById('pname').value=p.product_name;
     if(p.price_aud){document.getElementById('costPrice').value=p.price_aud;calcProfit();}
-    const extra=[p.description,p.material,p.color].filter(Boolean).join('\n');
+    const extra=[p.description,p.details,p.material,p.color].filter(Boolean).join('\n');
     if(extra && !document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
     if(p.image_urls&&p.image_urls.length>0) document.getElementById('listingImgUrls').value=p.image_urls.join('\n');
     document.getElementById('srcUrl').value=url;
