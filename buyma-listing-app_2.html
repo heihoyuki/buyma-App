@@ -870,10 +870,10 @@ async function startGen(){
 商品名: ${name}
 価格: ${price}円
 バリエーション: ${varInfo||'記載なし'}
-追加情報: ${extra||'なし'}
+${extra?`追加情報（英語の場合は日本語に翻訳し、必ずこの内容を元に説明文を作成すること）:\n${extra}`:'追加情報: なし'}
 
 以下の形式でJSONのみで返してください（前後のテキスト不要）:
-{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）。文章は適度に改行を入れて読みやすくすること。"}` ;
+{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）。文章は適度に改行を入れて読みやすくすること。"}`;
 
   const messages=imageContent.length>0
     ?[{role:'user',content:[...imageContent,{type:'text',text:prompt}]}]
