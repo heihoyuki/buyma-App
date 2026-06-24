@@ -987,8 +987,7 @@ async function submitBuyma(){
 
   // バリエーション → options + variants（サイズとカラーの両方が必須）
   const varRows=getVariants();
-  const sizeVals=[...new Set(varRows.map(v=>v.size||'FREE').filter(Boolean))];
-  const colorVals=[...new Set(varRows.map(v=>v.color||'その他').filter(Boolean))];
+  const sizeVals=varRows.length>0?[...new Set(varRows.map(v=>v.size||'FREE').filter(Boolean))]:['FREE'];
   // BUYMAカラーマスターID対応表
   const COLOR_MASTER={'ホワイト':1,'白':1,'white':1,'ブラック':2,'黒':2,'black':2,'グレー':3,'灰':3,'gray':3,'grey':3,'ブラウン':4,'茶':4,'brown':4,'ベージュ':5,'beige':5,'グリーン':6,'緑':6,'green':6,'ブルー':7,'青':7,'blue':7,'パープル':8,'紫':8,'purple':8,'イエロー':9,'黄':9,'yellow':9,'ピンク':10,'pink':10,'レッド':11,'赤':11,'red':11,'オレンジ':12,'orange':12,'シルバー':13,'銀':13,'silver':13,'ゴールド':14,'金':14,'gold':14,'クリア':15,'透明':15,'clear':15,'ネイビー':16,'紺':16,'navy':16,'マルチカラー':99,'multi':99,'その他':99};
   function getColorMasterId(name){const n=name.toLowerCase();if(COLOR_MASTER[name])return COLOR_MASTER[name];if(COLOR_MASTER[n])return COLOR_MASTER[n];for(const[k,id]of Object.entries(COLOR_MASTER)){if(name.includes(k)||n.includes(k.toLowerCase()))return id;}return 99;}
@@ -1012,7 +1011,7 @@ async function submitBuyma(){
     };
     if(st==='stock_in_hand') vObj.stocks=v.qty;
     return vObj;
-  }):[{options:[{type:'size',value:'FREE'},{type:'color',value:'その他'}],stock_type:'purchase_for_order'}];
+  }):[{options:[{type:'size',value:'FREE'},{type:'color',value:'マルチカラー'}],stock_type:'purchase_for_order'}];
   // purchase_for_order の場合は order_quantity をproductレベルで指定
   const hasPurchaseOrder=variants.some(v=>v.stock_type==='purchase_for_order');
   const orderQty=hasPurchaseOrder?(varRows.length>0?Math.max(...varRows.filter(v=>v.type==='order').map(v=>v.qty||10)):10):undefined;
