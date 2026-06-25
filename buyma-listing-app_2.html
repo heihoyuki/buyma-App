@@ -846,11 +846,14 @@ async function doFetchUrl(){
 
 必ず取得するURL：
 1. 商品ページ: ${url}
+   → description・details・価格・素材・カラーは商品ページから取得する
 2. ShopifyのJSON API（必ず取得すること）: ${jsonUrl}
    → product.images配列の各要素のsrcフィールドに全ての画像URLが入っている
 
-image_urlsには、Shopify JSONのproduct.images配列から全てのsrc値を入れること（最大20件）。
-JSONが取得できない場合はweb_searchで同じ商品を検索する。
+出力ルール：
+- detailsにはサイズ・寸法・素材・特徴など仕様の詳細を全て含める（商品ページから取得）
+- image_urlsにはShopify JSONのproduct.images配列から全てのsrc値を入れること（最大20件）
+- JSONが取得できない場合はweb_searchで同じ商品を検索する
 
 {"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2","画像URL3"]}`}]})
     });
