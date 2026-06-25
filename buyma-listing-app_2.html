@@ -845,7 +845,7 @@ async function doFetchUrl(){
 
 手順：
 1. まず通常のURLをweb_fetchで取得する
-2. Shopifyサイトの場合は /products/商品ハンドル.json 形式のURLも必ずweb_fetchで取得する（例：${url.replace(/\?.*$/,'').replace(/\/[^\/]*$/,'')}.json ）。ShopifyのJSON APIには images配列があり、全ての商品画像URLが含まれている
+2. Shopifyサイトの場合は /products/商品ハンドル.json 形式のURLも必ずweb_fetchで取得する（例：${url.replace(/\?.*$/,'')}.json ）。ShopifyのJSON APIには images配列があり、全ての商品画像URLが含まれている
 3. 取得できない場合はweb_searchで同じ商品を検索する
 
 対象URL: ${url}
