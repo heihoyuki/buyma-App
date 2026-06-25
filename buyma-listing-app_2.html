@@ -841,12 +841,21 @@ async function doFetchUrl(){
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
         tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3},{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。ShopifyサイトはURLに.jsonを末尾につけた形式（例: /products/xxx.json）でも取得を試みてください。直接取得できない場合はweb_searchで同じ商品を検索してください:
-${url}
+        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。
 
-必ずdescription（商品説明）とdetails（サイズ・素材・特徴などの仕様詳細。ページに記載のある情報を全て含める）を両方取得すること。
+手順：
+1. まず通常のURLをweb_fetchで取得する
+2. Shopifyサイトの場合は /products/商品ハンドル.json 形式のURLも必ずweb_fetchで取得する（例：${url.replace(/\?.*$/,'').replace(/\/[^\/]*$/,'')}.json ）。ShopifyのJSON APIには images配列があり、全ての商品画像URLが含まれている
+3. 取得できない場合はweb_searchで同じ商品を検索する
 
-{"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2"]}`}]})
+対象URL: ${url}
+
+必ず以下を全て含めること：
+- description（商品説明）
+- details（サイズ・素材・特徴など仕様詳細。全て含める）
+- image_urls（商品画像のURL。Shopify JSONのimages配列から src フィールドを全て取得すること）
+
+{"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2","画像URL3"]}`}]})
     });
     const data=await res.json();
     if(data.error) throw new Error(data.error.message);
@@ -975,15 +984,20 @@ async function submitBuyma(){
   const shipping_methods=checkedShip.map(cb=>({shipping_method_id:parseInt(cb.value)}));
 
   const name=document.getElementById('rname').value.trim();
-  const comment=document.getElementById('rcomment').value.trim();
+  // BUYMAは絵文字・®™©などの特殊文字を拒否するため送信前に除去
+  const comment=document.getElementById('rcomment').value.trim()
+    .replace(/[®™©℠℗]/g,'')  // ®™©℠℗
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g,'')     // 絵文字（サロゲートペア・補助面）
+    .replace(/[☀-➿]/g,'')                    // 記号・装飾（☀〜➿）
+    .replace(/️/g,'').replace(/‍/g,'')       // バリエーションセレクタ・ZWJ
+    .trim();
   const price=parseInt(document.getElementById('price').value)||0;
 
   // 購入期限（90日後）
   const exp=new Date();exp.setDate(exp.getDate()+90);
   const available_until=`${exp.getFullYear()}/${String(exp.getMonth()+1).padStart(2,'0')}/${String(exp.getDate()).padStart(2,'0')}`;
 
-  // 画像チェック（必須）
-  if(images.length===0){alert('商品画像が必要です。写真を追加するか、画像URLを入力してください。');return;}
+  // 画像は任意（BUYMAで後から追加可）
 
   // バリエーション → options + variants（サイズとカラーの両方が必須）
   const varRows=getVariants();
