@@ -835,25 +835,22 @@ async function doFetchUrl(){
   if(!url){alert('URLを入力してください');return;}
   if(!key){alert('Claude APIキーを入力してください');return;}
   st.className='ust loading';st.textContent='読み取り中...';
+  const jsonUrl=url.replace(/\?.*$/,'').replace(/\/?$/,'')+'.json';
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
-        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3},{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:`以下のURLの商品ページをweb_fetchで取得して、商品情報をJSONのみで返してください。
+        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:4},{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:`以下の2つのURLを両方web_fetchで取得して、商品情報をJSONのみで返してください。
 
-手順：
-1. まず通常のURLをweb_fetchで取得する
-2. Shopifyサイトの場合は /products/商品ハンドル.json 形式のURLも必ずweb_fetchで取得する（例：${url.replace(/\?.*$/,'')}.json ）。ShopifyのJSON APIには images配列があり、全ての商品画像URLが含まれている
-3. 取得できない場合はweb_searchで同じ商品を検索する
+必ず取得するURL：
+1. 商品ページ: ${url}
+2. ShopifyのJSON API（必ず取得すること）: ${jsonUrl}
+   → product.images配列の各要素のsrcフィールドに全ての画像URLが入っている
 
-対象URL: ${url}
-
-必ず以下を全て含めること：
-- description（商品説明）
-- details（サイズ・素材・特徴など仕様詳細。全て含める）
-- image_urls（商品画像のURL。Shopify JSONのimages配列から src フィールドを全て取得すること）
+image_urlsには、Shopify JSONのproduct.images配列から全てのsrc値を入れること（最大20件）。
+JSONが取得できない場合はweb_searchで同じ商品を検索する。
 
 {"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー","image_urls":["画像URL1","画像URL2","画像URL3"]}`}]})
     });
