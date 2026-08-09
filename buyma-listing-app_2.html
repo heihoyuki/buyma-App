@@ -982,11 +982,15 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
     :[{role:'user',content:prompt}];
 
   try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),90000);
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages}),
+      signal:ctrl.signal
     });
+    clearTimeout(tid);
     const data=await res.json();
     if(data.error) throw new Error(data.error.message);
     const txt=data.content[0].text;
@@ -994,7 +998,11 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
     buildResult(parsed);
     genDone=true;
     showScr('s3');
-  }catch(e){alert('エラー: '+e.message);showScr('s1');}
+  }catch(e){
+    const msg=e.name==='AbortError'?'タイムアウト（90秒）：ネットワークまたはAPIの問題。もう一度試してください。':e.message;
+    alert('エラー: '+msg);
+    showScr('s1');
+  }
 }
 
 function buildResult(parsed){
