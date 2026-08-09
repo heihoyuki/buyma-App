@@ -658,6 +658,7 @@ function setCatSub(v){
 // バリエーション
 let varId=0;
 function addVariant(){
+  const existingRows=[...document.querySelectorAll('.varrow')];
   const id='v'+varId++;
   const div=document.createElement('div');
   div.className='varrow'; div.id=id;
@@ -709,10 +710,21 @@ function addVariant(){
       </div>
     </div>`;
   document.getElementById('varList').appendChild(div);
-  // ドロップダウンの初期値をテキスト欄に自動入力
-  const initSel=div.querySelector('.colorsel');
-  const initTxt=div.querySelector('.colortxt');
-  if(initSel&&initTxt) initTxt.value=initSel.options[initSel.selectedIndex].text.split(' ').slice(1).join(' ');
+  const sizeInput=div.querySelector('input[type="text"]:not(.colortxt)');
+  const colorSel=div.querySelector('.colorsel');
+  const colorTxt=div.querySelector('.colortxt');
+  if(existingRows.length>0){
+    const last=existingRows[existingRows.length-1];
+    const lastSize=last.querySelector('input[type="text"]:not(.colortxt)');
+    const lastColorSel=last.querySelector('.colorsel');
+    const lastColorTxt=last.querySelector('.colortxt');
+    if(sizeInput&&lastSize) sizeInput.value=lastSize.value;
+    if(colorSel&&lastColorSel) colorSel.value=lastColorSel.value;
+    if(colorTxt&&lastColorTxt) colorTxt.value=lastColorTxt.value;
+  } else {
+    if(sizeInput) sizeInput.value='one size';
+    if(colorSel&&colorTxt) colorTxt.value=colorSel.options[colorSel.selectedIndex].text.split(' ').slice(1).join(' ');
+  }
 }
 function updateVarType(id, type){
   // 将来的な処理用
