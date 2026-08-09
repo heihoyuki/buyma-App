@@ -435,7 +435,26 @@ textarea{resize:vertical;line-height:1.6;}
 </div>
 
 <script>
-const FAV_BRANDS = [{"id": 325, "name": "KSUBI(スビ)"}, {"id": 888, "name": "Ray Ban(レイバン)"}, {"id": 7139, "name": "State of Escape(ステイトオブエスケープ)"}, {"id": 10636, "name": "TEMPLE OF THE SUN(テンプルオブザサン)"}, {"id": 210, "name": "HERMES(エルメス)"}, {"id": 334, "name": "Vivienne Westwood(ヴィヴィアンウエストウッド)"}, {"id": 9913, "name": "Oral-B(オーラルビー)"}, {"id": 6693, "name": "Colgate(コルゲート)"}, {"id": 594, "name": "THE NORTH FACE(ザノースフェイス)"}];
+function getBrandHistory(){try{return JSON.parse(localStorage.getItem('brandHistory')||'[]');}catch{return[];}}
+function saveBrandToHistory(id,name){let h=getBrandHistory();const i=h.findIndex(b=>b.id===id);if(i>=0){h[i].count++;h[i].name=name;}else{h.push({id,name,count:1});}h.sort((a,b)=>b.count-a.count);localStorage.setItem('brandHistory',JSON.stringify(h.slice(0,20)));}
+function renderFavBrands(){
+  const fb=document.getElementById('favbrands');
+  fb.innerHTML='';
+  const hist=getBrandHistory().slice(0,8);
+  if(!hist.length&&selBrandId===null){return;}
+  const noB=document.createElement('div');
+  noB.className='bchip'+(selBrandId===0?' sel':'');
+  noB.textContent='ブランドなし';
+  noB.addEventListener('click',()=>selBrand(0,'ブランドなし',true));
+  fb.appendChild(noB);
+  hist.forEach(b=>{
+    const d=document.createElement('div');
+    d.className='bchip'+(selBrandId===b.id?' sel':'');
+    d.textContent=b.name.replace(/\(.*?\)/g,'').trim();
+    d.addEventListener('click',()=>selBrand(b.id,b.name,true));
+    fb.appendChild(d);
+  });
+}
 const BRAND_LINKS = {"325": "ksubi\nhttps://www.buyma.com/r/_KSUBI-%E3%82%B9%E3%83%93/-B11546107/", "888": "rayban\nhttps://www.buyma.com/r/_RAY-BAN-%E3%83%AC%E3%82%A4%E3%83%90%E3%83%B3/-B11546107/", "7139": "state of escape\nhttps://www.buyma.com/r/_STATE-OF-ESCAPE-%E3%82%B9%E3%83%86%E3%82%A4%E3%83%88%E3%82%AA%E3%83%96%E3%82%A8%E3%82%B9%E3%82%B1%E3%83%BC%E3%83%97/-B11546107/", "10636": "temple of the sun\nhttps://www.buyma.com/r/_TEMPLE-OF-THE-SUN-%E3%83%86%E3%83%B3%E3%83%97%E3%83%AB%E3%82%AA%E3%83%96%E3%82%B6%E3%82%B5%E3%83%B3/-B11546107/", "210": "hermes\nhttps://www.buyma.com/r/_HERMES-%E3%82%A8%E3%83%AB%E3%83%A1%E3%82%B9/-B11546107/", "334": "vivienne westwood\nhttps://www.buyma.com/r/_VIVIENNE-WESTWOOD-%E3%83%B4%E3%82%A3%E3%83%B4%E3%82%A3%E3%82%A2%E3%83%B3%E3%82%A6%E3%82%A8%E3%82%B9%E3%83%88%E3%82%A6%E3%83%83%E3%83%89/-B11546107/", "4351": "ganni\nhttps://www.buyma.com/r/_GANNI-%E3%82%AC%E3%83%8B%E3%83%BC/-B11546107/"};
 const CAT_LINKS = {"レディースファッション": "レディース\nhttps://www.buyma.com/r/-C1001B11546107/", "メンズファッション": "メンズ\nhttps://www.buyma.com/r/-C1002B11546107/", "ベビー・キッズ": "baby\nhttps://www.buyma.com/r/-C1005B11546107/", "ビューティー": "ビューティ\nhttps://www.buyma.com/r/-C1003B11546107/"};
 const FIXED_COMMENT = "オーストラリアより買い付け発送させていただきます。\n買い付けから1週間程度で発送可能ですので\nお受け取りまで2週間～3週間ほどかかる予定です。\n\n♢在庫は常に変動しておりますので、ご購入時に在庫切れになる場合がございますのであらかじめご了承下さいませ。\n\n♢ 商品は正規店/オンライン正規店のみから買付、 オーストラリアより買付、海外または国内発送にてお客様のお手元にお届けいたします。\n\n♢海外発送に不安がある方/購入者様のためにしていること\n・購入時/商品買付時の写真\n・商品の写真\n・梱包写真\n・発送手続き中の写真\n・配送状況を定期的に報告\n随時連絡をさせていただいております。\n\nーーーーーーーーーーーー\n♢関税につきましては、buymaの規約に従い購入者様のご負担とさせていただきます。\n\n♢商品補償あんしんプラス buymaの商品紛失補償、初期不良補償、返品補償の制度になります。\nhttps://qa.buyma.com/bm/anshin/1006.html\n*Australia Postでは送料にAUD$100までの商品補償がついております。";
@@ -458,23 +477,8 @@ window.addEventListener('load',()=>{
   document.getElementById('buymaToken').addEventListener('input',e=>localStorage.setItem('bmt',e.target.value));
   document.getElementById('imgbbKey').addEventListener('input',e=>localStorage.setItem('ibk',e.target.value));
 
-  // お気に入りブランド
-  const fb=document.getElementById('favbrands');
-  // ブランドなしを先頭に追加
-  const noB=document.createElement('div');
-  noB.className='bchip';
-  noB.textContent='ブランドなし';
-  noB.dataset.id=0; noB.dataset.name='ブランドなし';
-  noB.addEventListener('click',()=>selBrand(0,'ブランドなし',noB));
-  fb.appendChild(noB);
-  FAV_BRANDS.forEach(b=>{
-    const d=document.createElement('div');
-    d.className='bchip';
-    d.textContent=b.name.replace(/\(.*?\)/g,'').trim();
-    d.dataset.id=b.id; d.dataset.name=b.name;
-    d.addEventListener('click',()=>selBrand(b.id,b.name,d));
-    fb.appendChild(d);
-  });
+  // ブランド履歴チップを表示
+  renderFavBrands();
 
   // カテゴリ上位
   const ct=document.getElementById('cattop');
@@ -574,21 +578,21 @@ function delImg(i){
 }
 
 // ブランド
-function selBrand(id,name,el){
+function selBrand(id,name,fromChip){
   selBrandId=id; selBrandName=name;
-  document.querySelectorAll('.bchip').forEach(c=>c.classList.remove('sel'));
-  if(el) el.classList.add('sel');
+  if(id&&id!==0) saveBrandToHistory(id,name);
+  renderFavBrands();
   document.getElementById('bsearch').value='';
   document.getElementById('bdd').classList.remove('open');
-  const isFav=FAV_BRANDS.some(b=>b.id===id);
+  const inChips=id===0||getBrandHistory().slice(0,8).some(b=>b.id===id);
   const tag=document.getElementById('selbrandtag');
-  tag.innerHTML=isFav?'':`<div class="selbrand">${name} <button onclick="clearBrand()">×</button></div>`;
+  tag.innerHTML=(!id||id===0||inChips)?'':`<div class="selbrand">${name} <button onclick="clearBrand()">×</button></div>`;
   updateNameCount();
 }
 function clearBrand(){
   selBrandId=null; selBrandName='';
   document.getElementById('selbrandtag').innerHTML='';
-  document.querySelectorAll('.bchip').forEach(c=>c.classList.remove('sel'));
+  renderFavBrands();
   updateNameCount();
 }
 function searchBrand(q){
@@ -1186,7 +1190,7 @@ function showScr(id){
 function resetForm(){
   showScr('s1');
   imgs=[];selBrandId=null;selBrandName='';selCatId=null;selCatTop='';selTags=['送料無料'];
-  document.querySelectorAll('.bchip').forEach(c=>c.classList.remove('sel'));
+  renderFavBrands();
   document.querySelectorAll('.ctbtn').forEach(c=>c.classList.remove('sel'));
   document.querySelectorAll('.tchip').forEach(c=>{
     c.classList.remove('sel');
