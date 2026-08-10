@@ -851,22 +851,11 @@ async function doFetchUrl(){
     return data;
   };
   try{
-    const data=await callClaude(`以下の2つのURLを両方web_fetchで取得して、商品情報をJSONのみで返してください。
+    const data=await callClaude(`${url} をweb_fetchで取得して、商品情報をJSONのみで返してください。出力はJSONのみ。説明文・マークダウン・コードブロックは不要。
 
-必ず取得するURL：
-1. ShopifyのJSON API（最優先・必ず取得すること）: ${jsonUrl}
-   → product.images配列の各要素のsrcフィールドに全ての画像URLが入っている
-2. 商品ページ: ${url}
-   → description・details・価格・素材・カラーは商品ページから取得する
+{"image_urls":["画像URL1","画像URL2"],"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など","material":"素材","color":"カラー"}
 
-出力ルール：
-- JSONの最初のフィールドはimage_urlsにすること。ShopifyのJSONのproduct.images配列の全src値をそのまま入れる（最大15件・URLの省略や短縮は禁止）
-- 1のJSONが取得できない場合（Shopify以外のサイト）は、商品ページのog:image・imgタグ・srcsetから商品画像のURLを集めてimage_urlsに入れること
-- detailsにはサイズ・寸法・素材・特徴など仕様の詳細を全て含める（商品ページから取得）
-- どちらのURLも取得できない場合はweb_searchで同じ商品を検索する
-- 出力はJSONのみ。説明文・マークダウン・コードブロックは不要
-
-{"image_urls":["画像URL1","画像URL2"],"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など仕様の詳細（改行区切り）","material":"素材","color":"カラー"}`,8000);
+image_urlsにはog:image・imgタグ・srcsetから商品画像URLを最大10件入れること。`,4000);
     const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     let p=null;
     const m=txt.match(/\{[\s\S]*\}/);
@@ -886,16 +875,6 @@ async function doFetchUrl(){
     if(!p.image_urls||p.image_urls.length===0){
       const cdn=txt.match(/https?:\/\/cdn\.shopify\.com\/[^"'\s\\)]+/g);
       if(cdn)p.image_urls=[...new Set(cdn)];
-    }
-    // 画像救済2：それでも0件なら画像専用でもう一度取得
-    if(!p.image_urls||p.image_urls.length===0){
-      st.textContent='読み取り中...（画像を再取得しています）';
-      try{
-        const d2=await callClaude(`${jsonUrl} をweb_fetchで取得して、product.images配列の各要素のsrc値だけを改行区切りで出力してください。説明文は一切不要。もし取得できない場合は ${url} をweb_fetchで取得し、ページ内の商品画像URL（og:image・imgタグ・srcset）を改行区切りで出力してください。`,4000);
-        const t2=(d2.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-        const u2=t2.match(/https?:\/\/[^"'\s\\)]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s\\)]*)?/gi);
-        if(u2)p.image_urls=[...new Set(u2)];
-      }catch(e2){}
     }
     // 画像の正規化：&amp;を戻す・低解像度(sw=)を高解像度化・クエリ違いの重複を除去
     if(p.image_urls){
