@@ -855,11 +855,12 @@ async function doFetchUrl(){
     }finally{clearTimeout(timer);}
   };
   try{
-    const data=await callClaude(`${url} をweb_fetchで取得して、商品情報をJSONのみで返してください。出力はJSONのみ。説明文・マークダウン・コードブロックは不要。
+    const data=await callClaude(`以下の2つのURLをweb_fetchで取得して商品情報をJSONのみで返してください。出力はJSONのみ。
 
-{"image_urls":["画像URL1","画像URL2"],"product_name":"商品名","brand":"ブランド名","price_aud":数値またはnull,"description":"商品説明文","details":"サイズ・寸法・素材・特徴など","material":"素材","color":"カラー"}
+1. ${jsonUrl}（Shopify JSON・最優先）→ product.images[].src を image_urls に入れる
+2. ${url}（商品ページ）→ 説明・素材・サイズ等の詳細を取得
 
-image_urlsにはog:image・imgタグ・srcsetから商品画像URLを最大10件入れること。`,4000);
+{"image_urls":["URL1","URL2"],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明文","details":"サイズ・素材・特徴など","material":"素材","color":"カラー"}`,5000);
     const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     let p=null;
     const m=txt.match(/\{[\s\S]*\}/);
