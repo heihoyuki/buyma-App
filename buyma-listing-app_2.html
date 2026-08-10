@@ -839,16 +839,20 @@ async function doFetchUrl(){
   st.className='ust loading';st.textContent='読み取り中...';
   const jsonUrl=url.replace(/[?#].*$/,'').replace(/\/$/,'')+'.json';
   const callClaude=async(prompt,maxTok)=>{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
-        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:2}],
-        messages:[{role:'user',content:prompt}]})
-    });
-    const data=await res.json();
-    if(data.error) throw new Error(data.error.message);
-    return data;
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),25000);
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
+          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:1}],
+          messages:[{role:'user',content:prompt}]})
+      });
+      const data=await res.json();
+      if(data.error) throw new Error(data.error.message);
+      return data;
+    }finally{clearTimeout(timer);}
   };
   try{
     const data=await callClaude(`${url} をweb_fetchで取得して、商品情報をJSONのみで返してください。出力はJSONのみ。説明文・マークダウン・コードブロックは不要。
