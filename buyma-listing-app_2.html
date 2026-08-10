@@ -933,7 +933,20 @@ async function startGen(){
   const variants=getVariants();
   const varInfo=variants.length?variants.map(v=>`${v.size||'−'} / ${v.color||'−'} × ${v.stock}個`).join(', '):'';
 
-  const imageContent=imgs.slice(0,2).map(img=>({type:'image',source:{type:'base64',media_type:img.file.type,data:img.dataUrl.split(',')[1]}}));
+  const resizeImg=dataUrl=>new Promise(res=>{
+    const i=new Image();
+    i.onload=()=>{
+      const max=1024,s=Math.min(1,max/Math.max(i.width,i.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);
+      c.getContext('2d').drawImage(i,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg',0.8));
+    };i.src=dataUrl;
+  });
+  const imageContent=await Promise.all(imgs.slice(0,2).map(async img=>{
+    const small=await resizeImg(img.dataUrl);
+    return{type:'image',source:{type:'base64',media_type:'image/jpeg',data:small.split(',')[1]}};
+  }));
   const prompt=`あなたはBUYMAのパーソナルショッパーです。以下の商品の日本語説明文を生成してください。
 
 ${extra?`【重要】以下の追加情報を最優先で使用し、この内容を日本語に翻訳・要約して説明文を作成すること:\n---\n${extra}\n---\n`:''}ブランド: ${brandLabel}
