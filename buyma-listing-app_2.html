@@ -1014,7 +1014,25 @@ async function submitBuyma(){
   let imgUrls=document.getElementById('listingImgUrls').value.trim()
     .split('\n').map(s=>s.trim()).filter(Boolean);
 
-  // imgBBに再ホスト（出品時・並列・最大5枚）
+  // 画像を正方形レターボックス化してbase64で返す（CORS失敗時はnull）
+  const toSquareB64=src=>new Promise(res=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      const sz=Math.max(img.width,img.height);
+      const c=document.createElement('canvas');
+      c.width=sz;c.height=sz;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,sz,sz);
+      ctx.drawImage(img,(sz-img.width)/2,(sz-img.height)/2);
+      res(c.toDataURL('image/jpeg',0.9).split(',')[1]);
+    };
+    img.onerror=()=>res(null);
+    img.src=src;
+  });
+
+  // imgBBに再ホスト（出品時・並列・最大5枚・正方形化）
   const ibKey=document.getElementById('imgbbKey').value.trim();
   if(ibKey && imgUrls.length){
     document.getElementById('mtitle').textContent='⏳ 画像をアップロード中...';
@@ -1024,7 +1042,9 @@ async function submitBuyma(){
     const rest=imgUrls.slice(5);
     const results=await Promise.all(targets.map(async u=>{
       try{
-        const fd=new FormData();fd.append('key',ibKey);fd.append('image',u);
+        const b64=await toSquareB64(u);
+        const fd=new FormData();fd.append('key',ibKey);
+        if(b64) fd.append('image',b64); else fd.append('image',u);
         const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
         const d=await r.json();
         return d&&d.success?d.data.url:u;
