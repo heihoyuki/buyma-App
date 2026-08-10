@@ -925,29 +925,15 @@ async function startGen(){
   if(!key){alert('Claude APIキーを入力してください');return;}
 
   showScr('s2');
-  const memo=document.getElementById('memo').value;
-  const paste=document.getElementById('pasteText').value;
-  const extra=[memo,paste].filter(Boolean).join('\n');
-  // ブランドなし（id=0）の場合は空文字で扱う
-  const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
-  const variants=getVariants();
-  const varInfo=variants.length?variants.map(v=>`${v.size||'−'} / ${v.color||'−'} × ${v.stock}個`).join(', '):'';
+  try{
+    const memo=document.getElementById('memo').value;
+    const paste=document.getElementById('pasteText').value;
+    const extra=[memo,paste].filter(Boolean).join('\n');
+    const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
+    const variants=getVariants();
+    const varInfo=variants.length?variants.map(v=>`${v.size||'−'} / ${v.color||'−'} × ${v.qty}個`).join(', '):'';
 
-  const resizeImg=dataUrl=>new Promise(res=>{
-    const i=new Image();
-    i.onload=()=>{
-      const max=1024,s=Math.min(1,max/Math.max(i.width,i.height));
-      const c=document.createElement('canvas');
-      c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);
-      c.getContext('2d').drawImage(i,0,0,c.width,c.height);
-      res(c.toDataURL('image/jpeg',0.8));
-    };i.src=dataUrl;
-  });
-  const imageContent=await Promise.all(imgs.slice(0,2).map(async img=>{
-    const small=await resizeImg(img.dataUrl);
-    return{type:'image',source:{type:'base64',media_type:'image/jpeg',data:small.split(',')[1]}};
-  }));
-  const prompt=`あなたはBUYMAのパーソナルショッパーです。以下の商品の日本語説明文を生成してください。
+    const prompt=`あなたはBUYMAのパーソナルショッパーです。以下の商品の日本語説明文を生成してください。
 
 ${extra?`【重要】以下の追加情報を最優先で使用し、この内容を日本語に翻訳・要約して説明文を作成すること:\n---\n${extra}\n---\n`:''}ブランド: ${brandLabel}
 商品名: ${name}
@@ -962,17 +948,12 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
 以下の形式でJSONのみで返してください（前後のテキスト不要）:
 {"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）。サイズ・素材などの仕様詳細を含めること。文章は適度に改行を入れて読みやすくすること。"}`;
 
-  const messages=imageContent.length>0
-    ?[{role:'user',content:[...imageContent,{type:'text',text:prompt}]}]
-    :[{role:'user',content:prompt}];
-
-  try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),90000);
+    const tid=setTimeout(()=>ctrl.abort(),30000);
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages}),
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:prompt}]}),
       signal:ctrl.signal
     });
     clearTimeout(tid);
@@ -984,7 +965,7 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
     genDone=true;
     showScr('s3');
   }catch(e){
-    const msg=e.name==='AbortError'?'タイムアウト（90秒）：ネットワークまたはAPIの問題。もう一度試してください。':e.message;
+    const msg=e.name==='AbortError'?'タイムアウト（30秒）：もう一度試してください。':e.message;
     alert('エラー: '+msg);
     showScr('s1');
   }
