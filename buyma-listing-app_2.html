@@ -846,7 +846,7 @@ async function doFetchUrl(){
         method:'POST',signal:ctrl.signal,
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
-          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:1}],
+          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3}],
           messages:[{role:'user',content:prompt}]})
       });
       const data=await res.json();
