@@ -843,7 +843,7 @@ async function doFetchUrl(){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
-        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:4},{type:'web_search_20250305',name:'web_search'}],
+        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:2}],
         messages:[{role:'user',content:prompt}]})
     });
     const data=await res.json();
@@ -907,21 +907,20 @@ async function doFetchUrl(){
       }
       p.image_urls=uniq.slice(0,20);
     }
-    // 画像をimgBBに再ホスト：非Shopifyサイト(Pandora等)やホットリンク制限でも
-    // BUYMAが確実に画像を取得できるようにする（imgBBキーがある場合のみ）
+    // 画像をimgBBに再ホスト（imgBBキーがある場合のみ・最大5枚・並列処理）
     const ibKey=document.getElementById('imgbbKey').value.trim();
     if(ibKey && p.image_urls && p.image_urls.length){
-      st.textContent='読み取り中...（画像をimgBBに再ホストしています）';
-      const hosted=[];
-      for(const u of p.image_urls){
+      st.textContent='読み取り中...（画像をアップロード中）';
+      const targets=p.image_urls.slice(0,5);
+      const results=await Promise.all(targets.map(async u=>{
         try{
           const fd=new FormData();fd.append('key',ibKey);fd.append('image',u);
           const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
           const d=await r.json();
-          hosted.push(d&&d.success?d.data.url:u);
-        }catch(e){hosted.push(u);}
-      }
-      p.image_urls=hosted;
+          return d&&d.success?d.data.url:u;
+        }catch(e){return u;}
+      }));
+      p.image_urls=[...results,...p.image_urls.slice(5)];
     }
     if(p.product_name) document.getElementById('pname').value=p.product_name;
     if(p.price_aud){document.getElementById('costPrice').value=p.price_aud;calcProfit();}
