@@ -926,8 +926,8 @@ async function startGen(){
 
   showScr('s2');
   try{
-    const memo=document.getElementById('memo').value;
-    const paste=document.getElementById('pasteText').value;
+    const memo=(document.getElementById('memo')?.value)||'';
+    const paste=(document.getElementById('pasteText')?.value)||'';
     const extra=[memo,paste].filter(Boolean).join('\n');
     const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
     const variants=getVariants();
