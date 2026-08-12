@@ -86,6 +86,12 @@ textarea{resize:vertical;line-height:1.6;}
 .ust.ok{background:rgba(200,240,96,.1);color:#c8f060;display:block;}
 .ust.err{background:rgba(240,96,96,.1);color:#f06060;display:block;}
 .ust.loading{background:#242424;color:#888;display:block;}
+.imgdrop{border:1.5px dashed #2e2e2e;border-radius:10px;padding:16px 14px;text-align:center;margin-top:10px;transition:all .2s;background:#1a1a1a;display:none;}
+.imgdrop.show{display:block;}
+.imgdrop.over{border-color:#c8f060;background:rgba(200,240,96,.06);}
+.imgdrop .dicon{font-size:22px;margin-bottom:6px;}
+.imgdrop .dtitle{font-size:13px;font-weight:500;margin-bottom:4px;}
+.imgdrop .dsub{font-size:11px;color:#555;line-height:1.7;}
 /* char count */
 .ccount{font-size:11px;color:#555;text-align:right;margin-top:4px;font-family:monospace;}
 .ccount.warn{color:#f0a060;}
@@ -166,6 +172,14 @@ textarea{resize:vertical;line-height:1.6;}
           <button class="btn btn-s btn-sm" onclick="doFetchUrl()">読み取る</button>
         </div>
         <div class="ust" id="ust"></div>
+        <div class="imgdrop" id="imgdrop">
+          <div class="dicon">🖼️</div>
+          <div class="dtitle">画像をここにドラッグ</div>
+          <div class="dsub">ブランドサイトの画像をブラウザから直接ドラッグ＆ドロップ<br>または下の「スクショ」タブから画像をアップロード</div>
+          <input type="file" accept="image/*" multiple id="dropInput" style="position:absolute;opacity:0;width:0;height:0;">
+          <div style="margin-top:8px;"><button class="btn btn-s btn-sm" onclick="document.getElementById('dropInput').click()">📁 ファイルを選択</button></div>
+          <div class="pgrid" id="urldropgrid" style="margin-top:10px;"></div>
+        </div>
       </div>
       
     </div>
@@ -500,6 +514,17 @@ window.addEventListener('load',()=>{
   box.addEventListener('drop',e=>{e.preventDefault();box.style.borderColor='';addImgs(e.dataTransfer.files);});
   fi.addEventListener('change',e=>{addImgs(e.target.files);fi.value='';});
 
+  // URLモード画像ドロップゾーン
+  const drop=document.getElementById('imgdrop');
+  const di=document.getElementById('dropInput');
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{
+    e.preventDefault();drop.classList.remove('over');
+    addImgsToUrlDrop(e.dataTransfer.files);
+  });
+  di.addEventListener('change',e=>{addImgsToUrlDrop(e.target.files);di.value='';});
+
   // テキストモード自動解析
   document.getElementById('pasteText').addEventListener('input',parsePaste);
   // 初期カウントを0に設定
@@ -830,23 +855,48 @@ function updateRCount(){
 }
 
 // URL読み取り
+function addImgsToUrlDrop(files){
+  const ibKey=document.getElementById('imgbbKey').value.trim();
+  const grid=document.getElementById('urldropgrid');
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/')) return;
+    const r=new FileReader();
+    r.onload=async e=>{
+      const dataUrl=e.target.result;
+      const idx=imgs.length;
+      imgs.push({file:f,dataUrl,url:null,uploading:!!ibKey});
+      renderImgs();
+      if(ibKey){
+        try{
+          const fd=new FormData();
+          fd.append('image',dataUrl.split(',')[1]);
+          const res=await fetch('https://api.imgbb.com/1/upload?key='+ibKey,{method:'POST',body:fd});
+          const json=await res.json();
+          if(json.success){imgs[idx].url=json.data.url;imgs[idx].uploading=false;renderImgs();}
+        }catch(err){imgs[idx].uploading=false;renderImgs();}
+      }
+    };
+    r.readAsDataURL(f);
+  });
+}
 async function doFetchUrl(){
   const url=document.getElementById('fetchUrl').value.trim();
   const key=document.getElementById('apiKey').value.trim();
   const st=document.getElementById('ust');
+  const drop=document.getElementById('imgdrop');
   if(!url){alert('URLを入力してください');return;}
   if(!key){alert('Claude APIキーを入力してください');return;}
   st.className='ust loading';st.textContent='読み取り中...';
-  const jsonUrl=url.replace(/[?#].*$/,'').replace(/\/$/,'')+'.json';
+  drop.classList.remove('show');
   const callClaude=async(prompt,maxTok)=>{
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(),25000);
+    const timer=setTimeout(()=>ctrl.abort(),35000);
     try{
       const res=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',signal:ctrl.signal,
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
-          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:3}],
+          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:5}],
           messages:[{role:'user',content:prompt}]})
       });
       const data=await res.json();
@@ -854,54 +904,97 @@ async function doFetchUrl(){
       return data;
     }finally{clearTimeout(timer);}
   };
+  const normImgUrl=u=>u.replace(/&amp;/g,'&').replace(/&#(?:0*38|x0*26);/gi,'&').replace(/([?&]sw=)\d+/i,'$11200');
+  const extractImgs=txt=>{
+    const all=[];
+    // Shopify CDN
+    const cdn=txt.match(/https?:\/\/cdn\.shopify\.com\/[^"'\s\)<>
+]+/g);
+    if(cdn)all.push(...cdn);
+    // og:image / twitter:image content属性
+    const og=txt.match(/content="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
+    if(og)og.forEach(m=>{const u=m.match(/content="([^"]+)/i);if(u)all.push(u[1]);});
+    // 汎用 .jpg/.jpeg/.png/.webp URL
+    const gen=txt.match(/https?:\/\/[^\s"'<>\
+]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>\
+]*)?/gi);
+    if(gen)all.push(...gen);
+    const seen=new Set(),uniq=[];
+    for(let u of all.filter(u=>!/\.(svg|gif|ico|pdf)/i.test(u.split('?')[0]))){
+      u=normImgUrl(u);const kk=u.split('?')[0];
+      if(!seen.has(kk)&&kk.length>10){seen.add(kk);uniq.push(u);}
+    }
+    return uniq.slice(0,20);
+  };
   try{
-    const data=await callClaude(`以下の2つのURLをweb_fetchで取得して商品情報をJSONのみで返してください。出力はJSONのみ。
+    const jsonUrl=url.replace(/[?#].*$/,'').replace(/\/$/,'')+'.json';
+    const data=await callClaude(
+`以下のURLから商品情報を取得してJSONのみで返してください（前後のテキスト不要）。
 
-1. ${jsonUrl}（Shopify JSON・最優先）→ product.images[].src を image_urls に入れる
-2. ${url}（商品ページ）→ 説明・素材・サイズ等の詳細を取得
+取得URL（順番に試す）:
+1. ${jsonUrl} ← Shopify商品JSON（あれば最優先）
+2. ${url} ← 商品ページ
 
-{"image_urls":["URL1","URL2"],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明文","details":"サイズ・素材・特徴など","material":"素材","color":"カラー"}`,5000);
+【画像URL取得の重要指示 - 必ずすべて試すこと】
+・<meta property="og:image"> content属性の値
+・<meta name="twitter:image"> content属性の値
+・Shopify: product.images[].src, product.featured_image
+・schema.org Product: "image" プロパティ
+・<img> タグの src, data-src, data-lazy-src, srcset の中のURL
+・background-image の url() の中のURL
+・.jpg .jpeg .png .webp を含むすべてのURL（小さいサムネイルより大きい画像を優先）
+
+{"image_urls":["https://...","https://..."],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明","details":"詳細・サイズ・素材","material":"素材","color":"カラー"}`,
+    7000);
     const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     let p=null;
     const m=txt.match(/\{[\s\S]*\}/);
     if(m){try{p=JSON.parse(m[0]);}catch(e){p=null;}}
     if(!p){
-      // JSONが途中で切れた場合の救済：フィールドを個別に拾う
       p={};
-      const g=k=>{const mm=txt.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));return mm?mm[1].replace(/\\n/g,'\n'):null;};
+      const g=k=>{const mm=txt.match(new RegExp('"'+k+'"\s*:\s*"((?:[^"\\]|\\.)*)"'));return mm?mm[1].replace(/\n/g,'
+'):null;};
       p.product_name=g('product_name');p.brand=g('brand');p.description=g('description');
       p.details=g('details');p.material=g('material');p.color=g('color');
       const pm=txt.match(/"price_aud"\s*:\s*([\d.]+)/);if(pm)p.price_aud=parseFloat(pm[1]);
       const im=txt.match(/"image_urls"\s*:\s*\[([\s\S]*?)(?:\]|$)/);
-      if(im)p.image_urls=im[1].match(/https?:\/\/[^"\s\\]+/g)||[];
-      if(!p.product_name&&(!p.image_urls||!p.image_urls.length)) throw new Error('JSONが見つかりませんでした');
+      if(im)p.image_urls=im[1].match(/https?:\/\/[^"\s\]+/g)||[];
+      if(!p.product_name&&(!p.image_urls||!p.image_urls.length)) throw new Error('商品情報が見つかりませんでした');
     }
-    // 画像救済1：応答テキスト中のShopify CDN URLを直接拾う
     if(!p.image_urls||p.image_urls.length===0){
-      const cdn=txt.match(/https?:\/\/cdn\.shopify\.com\/[^"'\s\\)]+/g);
-      if(cdn)p.image_urls=[...new Set(cdn)];
-    }
-    // 画像の正規化：&amp;を戻す・低解像度(sw=)を高解像度化・クエリ違いの重複を除去
-    if(p.image_urls){
-      const normImg=u=>u.replace(/&amp;/g,'&').replace(/&#(?:0*38|x0*26);/gi,'&').replace(/([?&]sw=)\d+/i,'$11200');
+      p.image_urls=extractImgs(txt);
+    } else {
       const seen=new Set(),uniq=[];
       for(let u of p.image_urls.filter(u=>!/\.(svg|gif|ico)/i.test(u))){
-        u=normImg(u);const kk=u.split('?')[0];
+        u=normImgUrl(u);const kk=u.split('?')[0];
         if(!seen.has(kk)){seen.add(kk);uniq.push(u);}
       }
       p.image_urls=uniq.slice(0,20);
     }
-    // imgBBへの再ホストは出品時に行う（URL読み込み時はスキップして速度改善）
     if(p.product_name) document.getElementById('pname').value=p.product_name;
     if(p.price_aud){document.getElementById('costPrice').value=p.price_aud;calcProfit();}
-    const extra=[p.description,p.details,p.material,p.color].filter(Boolean).join('\n');
-    if(extra && !document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
-    if(p.image_urls&&p.image_urls.length>0) document.getElementById('listingImgUrls').value=p.image_urls.join('\n');
+    const extra=[p.description,p.details,p.material,p.color].filter(Boolean).join('
+');
+    if(extra&&!document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
+    if(p.image_urls&&p.image_urls.length>0) document.getElementById('listingImgUrls').value=p.image_urls.join('
+');
     document.getElementById('srcUrl').value=url;
     updateNameCount();
-    st.className='ust ok';
-    st.textContent=(p.image_urls&&p.image_urls.length>0)?('✅ 読み取り完了！（画像'+p.image_urls.length+'枚）'):'✅ 読み取り完了（画像は取得できませんでした。画像URL欄に手動で追加してください）';
-  }catch(e){st.className='ust err';st.textContent='⚠️ 読み取りできませんでした（'+e.message+'）。スクショかテキストモードをお試しください。';}
+    if(p.image_urls&&p.image_urls.length>0){
+      st.className='ust ok';
+      st.textContent='✅ 読み取り完了！（画像'+p.image_urls.length+'枚）';
+    } else {
+      st.className='ust ok';
+      st.textContent='✅ 商品情報を読み取りました。画像はBOT対策により自動取得できませんでした↓';
+      drop.classList.add('show');
+    }
+  }catch(e){
+    st.className='ust err';
+    const msg=e.message||'';
+    const hint=msg.includes('abort')||msg.includes('timeout')?'タイムアウト':'読み取り失敗';
+    st.textContent='⚠️ '+hint+'：ブランドサイトはBOT対策で取得できないことがあります。↓から画像を手動追加してください。';
+    drop.classList.add('show');
+  }
 }
 
 // テキストモード自動解析
