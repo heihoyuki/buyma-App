@@ -399,9 +399,11 @@ textarea{resize:vertical;line-height:1.6;}
   <!-- SCREEN 2: 生成中 -->
   <div class="screen" id="s2">
     <div class="gen">
-      <div class="spin"></div>
-      <p style="font-size:14px;color:#888;">商品情報を分析中...</p>
+      <div class="spin" id="genSpin"></div>
+      <p style="font-size:14px;color:#888;" id="genMsg">商品情報を分析中...</p>
       <p style="font-size:12px;color:#555;margin-top:8px;" id="gstat">写真からデータを読み取っています</p>
+      <p style="font-size:12px;color:#f06060;margin-top:10px;display:none;" id="genErr"></p>
+      <button class="btn btn-s btn-sm" onclick="cancelGen()" style="margin-top:20px;color:#888;">キャンセル</button>
     </div>
   </div>
 
@@ -1043,15 +1045,20 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
 {"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内・ブランド名は[ブランド名]形式で先頭に）","description":"商品の魅力を伝える説明文（200〜400文字）。サイズ・素材などの仕様詳細を含めること。文章は適度に改行を入れて読みやすくすること。"}`;
 
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),30000);
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:prompt}]}),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    const data=await res.json();
+    const tid=setTimeout(()=>{ctrl.abort();},45000);
+    let res;
+    try{
+      res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:prompt}]}),
+        signal:ctrl.signal
+      });
+    }finally{clearTimeout(tid);}
+    const data=await Promise.race([
+      res.json(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('レスポンス読込タイムアウト')),20000))
+    ]);
     if(data.error) throw new Error(data.error.message);
     const txt=data.content[0].text;
     const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
@@ -1059,10 +1066,23 @@ ${extra?`【重要】以下の追加情報を最優先で使用し、この内�
     genDone=true;
     showScr('s3');
   }catch(e){
-    const msg=e.name==='AbortError'?'タイムアウト（30秒）：もう一度試してください。':e.message;
-    alert('エラー: '+msg);
-    showScr('s1');
+    if(document.getElementById('s2').classList.contains('active')){
+      const msg=e.name==='AbortError'?'タイムアウト。もう一度お試しください。':e.message;
+      const errEl=document.getElementById('genErr');
+      if(errEl){errEl.textContent='⚠️ '+msg;errEl.style.display='block';}
+      document.getElementById('genSpin').style.display='none';
+      document.getElementById('genMsg').textContent='エラーが発生しました';
+      setTimeout(()=>showScr('s1'),3000);
+    }
   }
+}
+
+function cancelGen(){
+  showScr('s1');
+  document.getElementById('genSpin').style.display='';
+  document.getElementById('genMsg').textContent='商品情報を分析中...';
+  const errEl=document.getElementById('genErr');
+  if(errEl){errEl.style.display='none';}
 }
 
 function buildResult(parsed){
