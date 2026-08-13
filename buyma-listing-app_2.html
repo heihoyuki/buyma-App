@@ -909,17 +909,11 @@ async function doFetchUrl(){
   const normImgUrl=u=>u.replace(/&amp;/g,'&').replace(/&#(?:0*38|x0*26);/gi,'&').replace(/([?&]sw=)\d+/i,'$11200');
   const extractImgs=txt=>{
     const all=[];
-    // Shopify CDN
-    const cdn=txt.match(/https?:\/\/cdn\.shopify\.com\/[^"'\s\)<>
-]+/g);
+    const cdn=txt.match(/https?:\/\/cdn\.shopify\.com\/[^"'\s\)<>]+/g);
     if(cdn)all.push(...cdn);
-    // og:image / twitter:image content属性
     const og=txt.match(/content="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
     if(og)og.forEach(m=>{const u=m.match(/content="([^"]+)/i);if(u)all.push(u[1]);});
-    // 汎用 .jpg/.jpeg/.png/.webp URL
-    const gen=txt.match(/https?:\/\/[^\s"'<>\
-]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>\
-]*)?/gi);
+    const gen=txt.match(/https?:\/\/[^\s"'<>\\]+\.(?:jpg|jpeg|png|webp)(\?[^\s"'<>\\]*)?/gi);
     if(gen)all.push(...gen);
     const seen=new Set(),uniq=[];
     for(let u of all.filter(u=>!/\.(svg|gif|ico|pdf)/i.test(u.split('?')[0]))){
