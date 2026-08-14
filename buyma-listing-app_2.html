@@ -943,6 +943,13 @@ async function doFetchUrl(){
 {"image_urls":["https://...","https://..."],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明","details":"詳細・サイズ・素材","material":"素材","color":"カラー"}`,
     7000);
     const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const botSigns=['Cloudflare','Just a moment','cf-ray','DDoS protection','Checking your browser','Access Denied','Please enable Cookies','Ray ID','cf_chl'];
+    if(botSigns.some(s=>txt.includes(s))||(txt.length<4000&&txt.toLowerCase().includes('captcha'))){
+      st.className='ust err';
+      st.textContent='⛔ このサイトはBOT対策でブロックされています。スクショタブから画像をアップロードしてください。';
+      drop.classList.add('show');
+      return;
+    }
     let p=null;
     const m=txt.match(/\{[\s\S]*\}/);
     if(m){try{p=JSON.parse(m[0]);}catch(e){p=null;}}
@@ -1261,7 +1268,9 @@ async function submitBuyma(){
     const rawText=await res.text();
     let d;try{d=JSON.parse(rawText);}catch(e){d=null;}
     if(res.status===201||res.status===202){
-      document.getElementById('oktext').textContent=`出品リクエスト送信完了！\nステータス: ${res.status}\nレスポンス:\n${rawText}`;
+      let listingId='';try{const rd=JSON.parse(rawText);listingId=rd.data&&rd.data.id?String(rd.data.id):(rd.id?String(rd.id):'');}catch(e){}
+    const statusMsg=res.status===201?'✅ 出品が作成されました（ID: '+(listingId||'不明')+'）':'⏳ 出品リクエスト受付済み';
+    document.getElementById('oktext').textContent=`${statusMsg}\n\nBUYMA出品管理で反映を確認してください。\nステータス: ${res.status}\n\n--- 詳細 ---\n${rawText.substring(0,500)}`;
       document.getElementById('mOK').classList.add('open');
     }else{
       alert(`出品エラー (${res.status}):\n${rawText}`);
