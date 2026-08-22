@@ -374,7 +374,12 @@ textarea{resize:vertical;line-height:1.6;}
     </div>
     <div class="fs" style="display:flex;align-items:center;gap:10px;padding:8px 0;">
       <input type="checkbox" id="wmPname" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;">
-      <label for="wmPname" style="margin:0;font-weight:normal;font-size:14px;">画像に商品名を入れる（下部バナー）</label>
+      <label for="wmPname" style="margin:0;font-weight:normal;font-size:14px;">画像にバナーを入れる（ブランド名 ＋ 短縮商品名）</label>
+    </div>
+    <div class="fs" id="wmBannerShortWrap" style="display:none;padding-left:28px;">
+      <label style="font-size:13px;">バナー2行目（短縮商品名）</label>
+      <input type="text" id="wmBannerShort" placeholder="例：チャーム、バッグ、ネックレス" autocomplete="off">
+      <div style="font-size:11px;color:#555;margin-top:5px;">1行目にブランド名が自動表示・2行目にここで入力した名前が表示されます</div>
     </div>
     <div class="fs">
       <label>Claude API Key <span class="req">*</span></label>
@@ -495,7 +500,8 @@ window.addEventListener('load',()=>{
   if(t) document.getElementById('buymaToken').value=t;
   if(ib) document.getElementById('imgbbKey').value=ib;
   const wm=localStorage.getItem('wmt');if(wm) document.getElementById('wmText').value=wm;
-  if(localStorage.getItem('wmpn')==='1') document.getElementById('wmPname').checked=true;
+  if(localStorage.getItem('wmpn')==='1'){document.getElementById('wmPname').checked=true;document.getElementById('wmBannerShortWrap').style.display='block';}
+  const wbs=localStorage.getItem('wmbs');if(wbs) document.getElementById('wmBannerShort').value=wbs;
   const defaultDefs='Australia Post（スタンダード 5〜14日）:918102\n日本郵便 - ゆうパック:965049\nDHL EXPRESS:970663';
   const defsVal=smd||defaultDefs;
   document.getElementById('shipMethodDefs').value=defsVal;
@@ -504,7 +510,8 @@ window.addEventListener('load',()=>{
   document.getElementById('buymaToken').addEventListener('input',e=>localStorage.setItem('bmt',e.target.value));
   document.getElementById('imgbbKey').addEventListener('input',e=>localStorage.setItem('ibk',e.target.value));
   document.getElementById('wmText').addEventListener('input',e=>localStorage.setItem('wmt',e.target.value));
-  document.getElementById('wmPname').addEventListener('change',e=>localStorage.setItem('wmpn',e.target.checked?'1':'0'));
+  document.getElementById('wmPname').addEventListener('change',e=>{localStorage.setItem('wmpn',e.target.checked?'1':'0');document.getElementById('wmBannerShortWrap').style.display=e.target.checked?'block':'none';});
+  document.getElementById('wmBannerShort').addEventListener('input',e=>localStorage.setItem('wmbs',e.target.value));
 
   // ブランド履歴チップを表示
   renderFavBrands();
@@ -1139,7 +1146,7 @@ async function submitBuyma(){
     .split('\n').map(s=>s.trim()).filter(Boolean);
 
   // 画像を正方形レターボックス化してbase64で返す（CORS失敗時はnull）
-  const toSquareB64=(src,wmStr='',pnameStr='')=>new Promise(res=>{
+  const toSquareB64=(src,wmStr='',brandStr='',shortStr='')=>new Promise(res=>{
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>{
@@ -1166,17 +1173,24 @@ async function submitBuyma(){
         }
         ctx.restore();
       }
-      if(pnameStr){
-        const bh=Math.max(28,Math.floor(sz*0.075));
-        ctx.fillStyle='rgba(0,0,0,0.58)';
+      if(brandStr||shortStr){
+        const bh=Math.max(44,Math.floor(sz*0.12));
+        ctx.fillStyle='rgba(0,0,0,0.62)';
         ctx.fillRect(0,sz-bh,sz,bh);
-        ctx.fillStyle='#ffffff';
-        const pfs=Math.max(11,Math.floor(bh*0.48));
-        ctx.font=`bold ${pfs}px Arial`;
         ctx.textAlign='center';
         ctx.textBaseline='middle';
-        const txt=pnameStr.length>36?pnameStr.substring(0,36)+'…':pnameStr;
-        ctx.fillText(txt,sz/2,sz-bh/2,sz*0.94);
+        if(brandStr){
+          const bfs=Math.max(13,Math.floor(bh*0.36));
+          ctx.font=`bold ${bfs}px Arial`;
+          ctx.fillStyle='#ffffff';
+          ctx.fillText(brandStr,sz/2,sz-bh*0.68,sz*0.94);
+        }
+        if(shortStr){
+          const sfs=Math.max(10,Math.floor(bh*0.28));
+          ctx.font=`${sfs}px Arial`;
+          ctx.fillStyle='rgba(255,255,255,0.85)';
+          ctx.fillText(shortStr,sz/2,sz-bh*0.26,sz*0.94);
+        }
       }
       res(c.toDataURL('image/jpeg',0.9).split(',')[1]);
     };
@@ -1195,8 +1209,10 @@ async function submitBuyma(){
     const results=await Promise.all(targets.map(async u=>{
       try{
         const wmStr=document.getElementById('wmText').value.trim();
-        const pnameStr=document.getElementById('wmPname').checked?document.getElementById('rname').value.trim():'';
-        const b64=await toSquareB64(u,wmStr,pnameStr);
+        const doBanner=document.getElementById('wmPname').checked;
+        const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
+        const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+        const b64=await toSquareB64(u,wmStr,brandStr,shortStr);
         const fd=new FormData();fd.append('key',ibKey);
         if(b64) fd.append('image',b64); else fd.append('image',u);
         const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
