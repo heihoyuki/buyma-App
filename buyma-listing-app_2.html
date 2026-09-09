@@ -1297,6 +1297,14 @@ async function submitBuyma(){
     if(_rate) buyerNoteLines.push('【レート】1'+_cur+'='+_rate+'円');
     if(_dom) buyerNoteLines.push('【国内送料(AUS)】'+_dom+' AUD');
     if(_intl) buyerNoteLines.push('【国際送料(AUS→JP)】'+_intl+' AUD');
+    const _sell=parseFloat(document.getElementById('price').value)||0;
+    const _costNum=parseFloat(_cost)||0;
+    const _rateNum=parseFloat(_rate)||1;
+    const _domNum=parseFloat(_dom)||0;
+    const _intlNum=parseFloat(_intl)||0;
+    const _costJpy=_cur==='JPY'?_costNum:_costNum*_rateNum;
+    const _profitVal=_sell-_costJpy-(_domNum*_rateNum)-(_intlNum*_rateNum)-(_sell*0.055);
+    if(_sell&&_costNum) buyerNoteLines.push('【予想利益】¥'+Math.round(_profitVal).toLocaleString()+'（利益率'+(_sell>0?Math.round(_profitVal/_sell*100):0)+'%）');
     const buyerNotes=buyerNoteLines.join('\n');
     const payload={product:{
       control:'publish',
