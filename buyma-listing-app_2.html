@@ -1103,6 +1103,13 @@ function cancelGen(){
   if(errEl){errEl.style.display='none';}
 }
 
+function fmtDesc(txt){
+  return txt
+    .replace(/([。！？])/g,'$1\n')
+    .replace(/、(?=[^。！？\n]{20,})/g,'、\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
 function buildResult(parsed){
   // ブランドなし（id=0）の場合はブランド名を使わない
   const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
@@ -1127,7 +1134,7 @@ function buildResult(parsed){
   else pname=pname.slice(0,cut);
   document.getElementById('rname').value=pname;
   updateRCount();
-  document.getElementById('rcomment').value=(parsed.description||'')+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT;
+  document.getElementById('rcomment').value=fmtDesc(parsed.description||'')+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT;
 
   // 関連リンク生成（ブランドリンク＋カテゴリリンク）
   const links=[];
