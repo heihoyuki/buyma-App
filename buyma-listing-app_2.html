@@ -1109,7 +1109,7 @@ function fmtDesc(txt){
     const c=txt[i];
     if(c==='\n'){out+=c;len=0;continue;}
     out+=c;len++;
-    if('。！？'.includes(c)){out+='\n';len=0;}
+    if('。！？'.includes(c)){out+='\n\n';len=0;}
     else if(c==='、'&&len>=20){out+='\n';len=0;}
   }
   return out.replace(/\n{3,}/g,'\n\n').trim();
