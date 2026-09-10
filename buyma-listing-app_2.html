@@ -1104,11 +1104,15 @@ function cancelGen(){
 }
 
 function fmtDesc(txt){
-  return txt
-    .replace(/([。！？])/g,'$1\n')
-    .replace(/、(?=[^。！？\n]{20,})/g,'、\n')
-    .replace(/\n{3,}/g,'\n\n')
-    .trim();
+  let out='',len=0;
+  for(let i=0;i<txt.length;i++){
+    const c=txt[i];
+    if(c==='\n'){out+=c;len=0;continue;}
+    out+=c;len++;
+    if('。！？'.includes(c)){out+='\n';len=0;}
+    else if(c==='、'&&len>=20){out+='\n';len=0;}
+  }
+  return out.replace(/\n{3,}/g,'\n\n').trim();
 }
 function buildResult(parsed){
   // ブランドなし（id=0）の場合はブランド名を使わない
