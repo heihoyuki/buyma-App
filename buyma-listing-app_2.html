@@ -457,6 +457,30 @@ textarea{resize:vertical;line-height:1.6;}
 </div>
   <!-- SCREEN 4: バッチ出品 -->
   <div class="screen" id="s4">
+    <!-- ブランド選択 -->
+    <div class="fs">
+      <label>ブランド <span class="req">*</span></label>
+      <div id="batchSelbrandtag"></div>
+      <div class="bsearch" style="position:relative;">
+        <input type="text" id="b2search" placeholder="ブランド名を検索（例：Pandora、UGG...）" oninput="searchBrand2(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="bdd" id="b2dd"></div>
+      </div>
+    </div>
+    <!-- カテゴリ選択 -->
+    <div class="fs">
+      <label>カテゴリ <span class="req">*</span></label>
+      <div class="cattop" id="batchCattop"></div>
+      <div id="batchCatmid2" style="display:none;margin-top:8px;">
+        <div style="font-size:11px;color:#555;margin-bottom:6px;">サブカテゴリを選択</div>
+        <div class="cattop" id="batchCatmid2btns"></div>
+      </div>
+      <div id="batchCatmid3" style="display:none;margin-top:8px;">
+        <div style="font-size:11px;color:#555;margin-bottom:6px;">詳細カテゴリを選択</div>
+        <div class="cattop" id="batchCatmid3btns"></div>
+      </div>
+      <div id="batchCatSelected" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(96,212,240,.08);border:1px solid #60d4f0;border-radius:8px;font-size:13px;color:#60d4f0;"></div>
+    </div>
+    <!-- ブランドページURL -->
     <div class="fs">
       <label>ブランドページURL</label>
       <input type="text" id="batchPageUrl" placeholder="https://www.pandora.net/en-au/jewellery/charms/" autocomplete="off">
@@ -579,13 +603,22 @@ window.addEventListener('load',()=>{
   // ブランド履歴チップを表示
   renderFavBrands();
 
-  // カテゴリ上位
+  // カテゴリ上位（①タブ）
   const ct=document.getElementById('cattop');
   Object.keys(CAT_TREE).forEach(top=>{
     const b=document.createElement('div');
     b.className='ctbtn'; b.textContent=top;
     b.addEventListener('click',()=>selTopCat(top,b));
     ct.appendChild(b);
+  });
+
+  // カテゴリ上位（④バッチタブ）
+  const bct=document.getElementById('batchCattop');
+  Object.keys(CAT_TREE).forEach(top=>{
+    const b=document.createElement('div');
+    b.className='ctbtn'; b.textContent=top;
+    b.addEventListener('click',()=>selTopCatBatch(top,b));
+    bct.appendChild(b);
   });
 
   // バリエーション初期1行
@@ -713,7 +746,71 @@ function searchBrand(q){
   dd.innerHTML=res.map(b=>`<div class="bopt" onmousedown="event.preventDefault();selBrand(${b[0]},'${b[1]}',null)" ontouchend="event.preventDefault();selBrand(${b[0]},'${b[1]}',null)">${b[1]}</div>`).join('');
   dd.classList.add('open');
 }
-document.addEventListener('click',e=>{if(!e.target.closest('.bsearch'))document.getElementById('bdd').classList.remove('open');});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.bsearch')){
+    document.getElementById('bdd').classList.remove('open');
+    document.getElementById('b2dd').classList.remove('open');
+  }
+});
+function searchBrand2(q){
+  const dd=document.getElementById('b2dd');
+  if(!q||q.length<1){dd.classList.remove('open');return;}
+  const res=ALL_BRANDS.filter(b=>b[1].toLowerCase().includes(q.toLowerCase())).slice(0,25);
+  if(!res.length){dd.classList.remove('open');return;}
+  dd.innerHTML=res.map(b=>`<div class="bopt" onmousedown="event.preventDefault();selBrand2(${b[0]},'${b[1]}')" ontouchend="event.preventDefault();selBrand2(${b[0]},'${b[1]}')">${b[1]}</div>`).join('');
+  dd.classList.add('open');
+}
+function selBrand2(id,name){
+  selBrandId=id; selBrandName=name;
+  if(id&&id!==0) saveBrandToHistory(id,name);
+  document.getElementById('b2search').value='';
+  document.getElementById('b2dd').classList.remove('open');
+  document.getElementById('batchSelbrandtag').innerHTML=id?`<div class="selbrand">${name} <button onclick="clearBrand2()">×</button></div>`:'';
+}
+function clearBrand2(){
+  selBrandId=null; selBrandName='';
+  document.getElementById('batchSelbrandtag').innerHTML='';
+}
+function selTopCatBatch(top,el){
+  selCatTop=top;
+  document.querySelectorAll('#batchCattop .ctbtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  const mid2btns=document.getElementById('batchCatmid2btns');
+  mid2btns.innerHTML='';
+  Object.keys(CAT_TREE[top]).forEach(mid=>{
+    const b=document.createElement('div');
+    b.className='ctbtn'; b.textContent=mid;
+    b.addEventListener('click',()=>selMidCatBatch(top,mid,b));
+    mid2btns.appendChild(b);
+  });
+  document.getElementById('batchCatmid2').style.display='block';
+  document.getElementById('batchCatmid3').style.display='none';
+  document.getElementById('batchCatSelected').style.display='none';
+  selCatId=null;
+}
+function selMidCatBatch(top,mid,el){
+  document.querySelectorAll('#batchCatmid2btns .ctbtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  const mid3btns=document.getElementById('batchCatmid3btns');
+  mid3btns.innerHTML='';
+  CAT_TREE[top][mid].forEach(([id,name])=>{
+    const b=document.createElement('div');
+    b.className='ctbtn'; b.textContent=name;
+    b.addEventListener('click',()=>selDetailCatBatch(id,top,mid,name,b));
+    mid3btns.appendChild(b);
+  });
+  document.getElementById('batchCatmid3').style.display='block';
+  document.getElementById('batchCatSelected').style.display='none';
+  selCatId=null;
+}
+function selDetailCatBatch(id,top,mid,name,el){
+  document.querySelectorAll('#batchCatmid3btns .ctbtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  selCatId=parseInt(id);
+  const sel=document.getElementById('batchCatSelected');
+  sel.textContent=`✅ ${top} > ${mid} > ${name}`;
+  sel.style.display='block';
+}
 
 // カテゴリ
 function selTopCat(top,el){
@@ -1478,12 +1575,24 @@ async function callClaude(prompt,maxTok=4000){
 }
 async function fetchBrandUrls(pageUrl){
   logB('ブランドページを取得中...');
-  const txt=await callClaude(`以下のブランドページにアクセスして、個別の商品詳細ページURLをすべてJSON配列で返してください。カテゴリや検索ページは除く。前後のテキスト不要。
+  const txt=await callClaude(`以下のブランドページにアクセスして、ページ内の個別商品詳細ページURLをすべてリストアップしてください。
+カテゴリページ・検索ページ・画像URL・CDNリンクは除外し、商品詳細ページのURLのみを対象にしてください。
 URL: ${pageUrl}
-形式: ["https://...","https://...",...]`,6000);
-  const m=txt.match(/\[[\s\S]*?\]/);
-  if(!m)return[];
-  try{return JSON.parse(m[0]).filter(u=>typeof u==='string'&&u.startsWith('http'));}catch{return[];}
+JSON配列のみで返してください（前後のテキスト不要）:
+["URL1","URL2","URL3",...]`,8000);
+  // 最長の[...]ブロックを探す（貪欲マッチ）
+  const m=txt.match(/\[[\s\S]*\]/);
+  if(m){
+    try{
+      const arr=JSON.parse(m[0]).filter(u=>typeof u==='string'&&u.startsWith('http'));
+      if(arr.length) return arr;
+    }catch{}
+  }
+  // フォールバック: テキストからhttpURLを直接抽出
+  const urlMatches=txt.match(/https?:\/\/[^\s"',\]<>]+/g)||[];
+  const fallback=[...new Set(urlMatches)].filter(u=>u.startsWith('http')&&u.length>20);
+  if(fallback.length) logB('URLを直接抽出: '+fallback.length+'件','ok');
+  return fallback;
 }
 async function processBatchItem(productUrl,settings){
   const fetchTxt=await callClaude(`以下のURLから商品情報を取得してJSONのみで返してください（前後のテキスト不要）。
@@ -1560,8 +1669,8 @@ async function startBatch(){
   if(!batchUrl)return alert('ブランドページURLを入力してください');
   if(!document.getElementById('apiKey').value.trim())return alert('Claude APIキーを設定してください（③出品タブの設定欄）');
   if(!document.getElementById('buymaToken').value.trim())return alert('BUYMAトークンを設定してください（③出品タブの設定欄）');
-  if(!selBrandId||selBrandId===0)return alert('ブランドを選択してください（①写真・情報タブ）');
-  if(!selCatId)return alert('カテゴリを選択してください（①写真・情報タブ）');
+  if(!selBrandId||selBrandId===0)return alert('ブランドを選択してください');
+  if(!selCatId)return alert('カテゴリを選択してください');
   const rate=parseFloat(document.getElementById('batchRate').value)||100;
   const intl=parseFloat(document.getElementById('batchIntl').value)||25;
   const settings={rate,intl};
