@@ -1667,16 +1667,34 @@ async function callClaude(prompt,maxTok=4000){
     body:JSON.stringify({model:'claude-opus-4-5',max_tokens:maxTok,tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:5}],messages:[{role:'user',content:prompt}]})
   });
   const d=await r.json();
-  return d.content?.find(c=>c.type==='text')?.text||'';
+  if(d.error) throw new Error(d.error.message||'API error');
+  return (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')||'';
 }
 async function fetchBrandUrls(pageUrl){
   logB('ブランドページを取得中...');
-  const txt=await callClaude(`以下のブランドページにアクセスして、ページ内の個別商品詳細ページURLをすべてリストアップしてください。
-カテゴリページ・検索ページ・画像URL・CDNリンクは除外し、商品詳細ページのURLのみを対象にしてください。
-URL: ${pageUrl}
-JSON配列のみで返してください（前後のテキスト不要）:
-["URL1","URL2","URL3",...]`,8000);
-  // 最長の[...]ブロックを探す（貪欲マッチ）
+  const baseUrl=new URL(pageUrl).origin;
+  const txt=await callClaude(`以下のURLから商品詳細ページのURLをすべて取得してください。
+
+【手順 - 必ず全て試すこと】
+1. ${pageUrl} にアクセスし、<a href>・JSON-LD・__NEXT_DATA__・__INITIAL_STATE__ から商品URLを探す
+2. 商品URLが10件未満なら ${baseUrl}/sitemap_products.xml にアクセス
+3. それもなければ ${baseUrl}/sitemap.xml にアクセスしてproductを含むURLを集める
+
+【商品URLの判定基準】
+- ${baseUrl} で始まる絶対URL
+- /p/ /product/ /item/ または商品スラッグ・SKUを含むパス
+- カテゴリ・検索・画像・CDN・アセットURLは除外
+
+JSON配列のみで返してください（説明文不要）:
+["URL1","URL2",...]`,10000);
+  logB('応答確認: '+(txt.slice(0,150).replace(/\n/g,' ')||'(空)'));
+  // BOTブロック検出
+  const botSigns=['Cloudflare','Just a moment','DDoS','Checking your browser','Access Denied','captcha','cf-ray'];
+  if(botSigns.some(s=>txt.toLowerCase().includes(s.toLowerCase()))){
+    logB('⛔ このサイトはBOT対策でブロックされています。URLを手動で入力してください。','err');
+    return[];
+  }
+  // 最長の[...]ブロックを探す
   const m=txt.match(/\[[\s\S]*\]/);
   if(m){
     try{
@@ -1686,7 +1704,7 @@ JSON配列のみで返してください（前後のテキスト不要）:
   }
   // フォールバック: テキストからhttpURLを直接抽出
   const urlMatches=txt.match(/https?:\/\/[^\s"',\]<>]+/g)||[];
-  const fallback=[...new Set(urlMatches)].filter(u=>u.startsWith('http')&&u.length>20);
+  const fallback=[...new Set(urlMatches)].filter(u=>u.startsWith('http')&&u.length>20&&!u.match(/\.(jpg|jpeg|png|webp|gif|svg|css|js)/i));
   if(fallback.length) logB('URLを直接抽出: '+fallback.length+'件','ok');
   return fallback;
 }
