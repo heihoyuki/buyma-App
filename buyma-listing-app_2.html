@@ -472,6 +472,11 @@ textarea{resize:vertical;line-height:1.6;}
         <input type="number" id="batchIntl" value="25" min="0" step="5">
       </div>
     </div>
+    <div class="fs">
+      <label>URLキーワードフィルター（任意）</label>
+      <input type="text" id="batchUrlFilter" placeholder="例：sale　pandora　charm　（スペース区切りでOR検索）" autocomplete="off">
+      <div style="font-size:11px;color:#555;margin-top:5px;">入力するとURLにキーワードを含む商品のみ出品（空欄=フィルターなし）</div>
+    </div>
     <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;">
       <div style="color:#c8f060;font-weight:bold;margin-bottom:6px;">⚙️ 価格設定（自動）</div>
       <div style="color:#888;line-height:1.8;">
@@ -1566,9 +1571,18 @@ async function startBatch(){
   document.getElementById('batchStopBtn').style.display='';
   batchRunning=true;batchIds=[];
   try{
-    const urls=await fetchBrandUrls(batchUrl);
+    let urls=await fetchBrandUrls(batchUrl);
     if(!urls.length){logB('商品URLが見つかりませんでした','err');return;}
     logB(urls.length+'件の商品URLを取得','ok');
+    // URLキーワードフィルター
+    const filterRaw=document.getElementById('batchUrlFilter').value.trim();
+    if(filterRaw){
+      const keywords=filterRaw.toLowerCase().split(/\s+/).filter(Boolean);
+      const before=urls.length;
+      urls=urls.filter(u=>keywords.some(k=>u.toLowerCase().includes(k)));
+      logB('フィルター「'+filterRaw+'」適用: '+before+'件→'+urls.length+'件','ok');
+      if(!urls.length){logB('フィルターに一致する商品がありません','err');return;}
+    }
     const total=urls.length;
     for(let i=0;i<urls.length;i++){
       if(!batchRunning)break;
