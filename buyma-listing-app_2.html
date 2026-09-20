@@ -1470,8 +1470,8 @@ async function callClaude(prompt,maxTok=4000){
   const apiKey=document.getElementById('apiKey').value.trim();
   const r=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10'},
-    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:maxTok,messages:[{role:'user',content:prompt}]})
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:maxTok,tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:5}],messages:[{role:'user',content:prompt}]})
   });
   const d=await r.json();
   return d.content?.find(c=>c.type==='text')?.text||'';
