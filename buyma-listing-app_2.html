@@ -611,7 +611,7 @@ window.addEventListener('load',()=>{
   di.addEventListener('change',e=>{addImgsToUrlDrop(e.target.files);di.value='';});
 
   // テキストモード自動解析
-  document.getElementById('pasteText').addEventListener('input',parsePaste);
+  document.getElementById('pasteText')?.addEventListener('input',parsePaste);
   // 初期カウントを0に設定
   document.getElementById('ncount').textContent='0 / 60（ブランド名含む、全角2・半角1）';
 });
