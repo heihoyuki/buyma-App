@@ -457,6 +457,60 @@ textarea{resize:vertical;line-height:1.6;}
 </div>
   <!-- SCREEN 4: バッチ出品 -->
   <div class="screen" id="s4">
+    <!-- API・出品設定アコーディオン -->
+    <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:14px;">
+      <div onclick="toggleBatchSettings()" style="padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#c8f060;font-weight:bold;font-size:13px;">⚙️ API・出品設定</span>
+        <span id="batchSettingsArrow" style="color:#888;font-size:12px;">▼ 開く</span>
+      </div>
+      <div id="batchSettingsBody" style="display:none;padding:0 14px 14px;">
+        <div class="fs"><label>Claude APIキー <span class="req">*</span></label><input type="password" id="b_apiKey" placeholder="sk-ant-..." autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
+        <div class="fs"><label>BUYMAトークン <span class="req">*</span></label><input type="password" id="b_buymaToken" placeholder="Bearer ..." autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
+        <div class="fs"><label>imgBB APIキー（ウォーターマーク用）</label><input type="text" id="b_imgbbKey" autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
+        <div class="fs"><label>ウォーターマーク文字</label><input type="text" id="b_wmText" placeholder="例：Australia Shop" autocomplete="off"></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+          <input type="checkbox" id="b_wmPname" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;">
+          <label for="b_wmPname" style="font-size:13px;">バナーを入れる（ブランド名＋短縮商品名）</label>
+        </div>
+        <div id="b_wmBannerShortWrap" style="display:none;padding-bottom:8px;">
+          <input type="text" id="b_wmBannerShort" placeholder="例：チャーム、バッグ、ネックレス" autocomplete="off">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="fs">
+            <label>買い付け国</label>
+            <select id="b_buyArea">
+              <option value="2004001000" selected>🇦🇺 オーストラリア</option>
+              <option value="1000000000">🇯🇵 日本</option>
+              <option value="2001001000">🇺🇸 アメリカ</option>
+              <option value="2002001000">🇬🇧 イギリス</option>
+              <option value="2002002000">🇫🇷 フランス</option>
+              <option value="2002003000">🇮🇹 イタリア</option>
+              <option value="2002004000">🇩🇪 ドイツ</option>
+              <option value="2003001000">🇰🇷 韓国</option>
+              <option value="2003002000">🇭🇰 香港</option>
+            </select>
+          </div>
+          <div class="fs">
+            <label>発送地</label>
+            <select id="b_shipArea">
+              <option value="2004001000" selected>🇦🇺 オーストラリア</option>
+              <option value="1000000000">🇯🇵 日本</option>
+              <option value="2001001000">🇺🇸 アメリカ</option>
+              <option value="2002001000">🇬🇧 イギリス</option>
+              <option value="2002002000">🇫🇷 フランス</option>
+              <option value="2002003000">🇮🇹 イタリア</option>
+              <option value="2002004000">🇩🇪 ドイツ</option>
+              <option value="2003001000">🇰🇷 韓国</option>
+              <option value="2003002000">🇭🇰 香港</option>
+            </select>
+          </div>
+        </div>
+        <div class="fs">
+          <label>送料設定（ラベル:ID 形式で1行ずつ）</label>
+          <textarea id="b_shipMethodDefs" rows="3" placeholder="例：EMS:123&#10;DHL Express:456" style="font-family:monospace;font-size:12px;"></textarea>
+        </div>
+      </div>
+    </div>
     <!-- ブランド選択 -->
     <div class="fs">
       <label>ブランド <span class="req">*</span></label>
@@ -489,7 +543,7 @@ textarea{resize:vertical;line-height:1.6;}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="fs">
         <label>為替レート（1AUD=円）</label>
-        <input type="number" id="batchRate" value="100" min="50" max="200" step="1">
+        <input type="number" id="batchRate" value="115" min="50" max="200" step="1">
       </div>
       <div class="fs">
         <label>国際送料（AUD）</label>
@@ -504,8 +558,7 @@ textarea{resize:vertical;line-height:1.6;}
     <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;">
       <div style="color:#c8f060;font-weight:bold;margin-bottom:6px;">⚙️ 価格設定（自動）</div>
       <div style="color:#888;line-height:1.8;">
-        利益率 20% ／ 最低利益 ¥1,500 ／ 5件ごとにBUYMA自動確認<br>
-        ブランド・カテゴリ・送料設定は「① 写真・情報」タブの設定を使用
+        利益率 20% ／ 最低利益 ¥1,500 ／ 5件ごとにBUYMA自動確認
       </div>
     </div>
     <div id="batchProgress" style="font-size:13px;color:#c8f060;margin-bottom:8px;min-height:20px;font-weight:500;"></div>
@@ -599,6 +652,42 @@ window.addEventListener('load',()=>{
   document.getElementById('wmText').addEventListener('input',e=>localStorage.setItem('wmt',e.target.value));
   document.getElementById('wmPname').addEventListener('change',e=>{localStorage.setItem('wmpn',e.target.checked?'1':'0');document.getElementById('wmBannerShortWrap').style.display=e.target.checked?'block':'none';});
   document.getElementById('wmBannerShort').addEventListener('input',e=>localStorage.setItem('wmbs',e.target.value));
+
+  // バッチタブ設定 - localStorageから読み込み
+  {
+    const lsMap={b_apiKey:'cak',b_buymaToken:'bmt',b_imgbbKey:'ibk',b_wmText:'wmt',b_wmBannerShort:'wmbs',b_shipMethodDefs:'smdefs'};
+    Object.entries(lsMap).forEach(([id,key])=>{const val=localStorage.getItem(key);const el=document.getElementById(id);if(val&&el)el.value=val;});
+    if(localStorage.getItem('wmpn')==='1'){document.getElementById('b_wmPname').checked=true;document.getElementById('b_wmBannerShortWrap').style.display='block';}
+    // 送料設定のデフォルト
+    if(!document.getElementById('b_shipMethodDefs').value) document.getElementById('b_shipMethodDefs').value=document.getElementById('shipMethodDefs').value;
+    // APIキー未設定なら設定欄を自動展開
+    if(!localStorage.getItem('cak')||!localStorage.getItem('bmt')){document.getElementById('batchSettingsBody').style.display='block';document.getElementById('batchSettingsArrow').textContent='▲ 閉じる';}
+  }
+  // バッチ↔メイン 双方向同期
+  function bSync(bId,mId,lsKey,evt='input'){
+    const bEl=document.getElementById(bId),mEl=document.getElementById(mId);
+    if(!bEl)return;
+    bEl.addEventListener(evt,e=>{if(mEl)mEl.value=e.target.value;if(lsKey)localStorage.setItem(lsKey,e.target.value);});
+    if(mEl)mEl.addEventListener(evt,e=>{bEl.value=e.target.value;});
+  }
+  bSync('b_apiKey','apiKey','cak');
+  bSync('b_buymaToken','buymaToken','bmt');
+  bSync('b_imgbbKey','imgbbKey','ibk');
+  bSync('b_wmText','wmText','wmt');
+  bSync('b_wmBannerShort','wmBannerShort','wmbs');
+  bSync('b_shipMethodDefs','shipMethodDefs','smdefs');
+  document.getElementById('b_wmPname').addEventListener('change',e=>{
+    const chk=e.target.checked;
+    document.getElementById('wmPname').checked=chk;
+    document.getElementById('b_wmBannerShortWrap').style.display=chk?'block':'none';
+    document.getElementById('wmBannerShortWrap').style.display=chk?'block':'none';
+    localStorage.setItem('wmpn',chk?'1':'0');
+  });
+  document.getElementById('b_buyArea').addEventListener('change',e=>{
+    document.getElementById('buyArea').value=e.target.value;
+    document.getElementById('b_shipArea').value=e.target.value;
+    document.getElementById('shipArea').value=e.target.value;
+  });
 
   // ブランド履歴チップを表示
   renderFavBrands();
@@ -752,6 +841,13 @@ document.addEventListener('click',e=>{
     document.getElementById('b2dd').classList.remove('open');
   }
 });
+function toggleBatchSettings(){
+  const body=document.getElementById('batchSettingsBody');
+  const arrow=document.getElementById('batchSettingsArrow');
+  const open=body.style.display==='none'||body.style.display==='';
+  body.style.display=open?'block':'none';
+  arrow.textContent=open?'▲ 閉じる':'▼ 開く';
+}
 function searchBrand2(q){
   const dd=document.getElementById('b2dd');
   if(!q||q.length<1){dd.classList.remove('open');return;}
@@ -1667,8 +1763,8 @@ URL: https://www.buyma.com/item/${lastId}/`,100);
 async function startBatch(){
   const batchUrl=document.getElementById('batchPageUrl').value.trim();
   if(!batchUrl)return alert('ブランドページURLを入力してください');
-  if(!document.getElementById('apiKey').value.trim())return alert('Claude APIキーを設定してください（③出品タブの設定欄）');
-  if(!document.getElementById('buymaToken').value.trim())return alert('BUYMAトークンを設定してください（③出品タブの設定欄）');
+  if(!document.getElementById('apiKey').value.trim())return alert('Claude APIキーを設定してください（⚙️ API・出品設定）');
+  if(!document.getElementById('buymaToken').value.trim())return alert('BUYMAトークンを設定してください（⚙️ API・出品設定）');
   if(!selBrandId||selBrandId===0)return alert('ブランドを選択してください');
   if(!selCatId)return alert('カテゴリを選択してください');
   const rate=parseFloat(document.getElementById('batchRate').value)||100;
