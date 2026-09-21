@@ -196,6 +196,58 @@ textarea{resize:vertical;line-height:1.6;}
       <div id="selbrandtag"></div>
     </div>
 
+    <!-- 画像編集パネル -->
+    <div class="fs" id="imgEditPanel" style="display:none;">
+      <div style="color:#c8f060;font-weight:bold;margin-bottom:12px;">✏️ 画像編集</div>
+
+      <!-- フレーム -->
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;">フレーム / 縁</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="frameOpts">
+        <div class="ctbtn sel" onclick="setEditFrame('none',this)">なし</div>
+        <div class="ctbtn" onclick="setEditFrame('thin',this)">白縁（細）</div>
+        <div class="ctbtn" onclick="setEditFrame('thick',this)">白縁（太）</div>
+        <div class="ctbtn" onclick="setEditFrame('rounded',this)">角丸</div>
+        <div class="ctbtn" onclick="setEditFrame('shadow',this)">シャドウ</div>
+      </div>
+
+      <!-- テキストバナー -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="checkbox" id="editBannerOn" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;" onchange="document.getElementById('editBannerOpts').style.display=this.checked?'block':'none'">
+        <label for="editBannerOn" style="font-size:13px;cursor:pointer;">テキスト情報バナーを追加（画像下部）</label>
+      </div>
+      <div id="editBannerOpts" style="display:none;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:12px;">
+        <input type="text" id="editLine1" placeholder="1行目：商品名や説明（例：Calvin Klein｜ブラレット）" autocomplete="off" style="margin-bottom:8px;">
+        <input type="text" id="editLine2" placeholder="2行目：カラー展開（例：Black / White / Pink / Beige）" autocomplete="off" style="margin-bottom:8px;">
+        <input type="text" id="editLine3" placeholder="3行目：サイズ展開（例：XS / S / M / L / XL）" autocomplete="off">
+        <div style="display:flex;gap:12px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:12px;color:#888;">背景色</label>
+          <input type="color" id="editBannerBg" value="#000000" style="width:36px;height:28px;padding:2px;cursor:pointer;border-radius:4px;">
+          <label style="font-size:12px;color:#888;">文字色</label>
+          <input type="color" id="editBannerFg" value="#ffffff" style="width:36px;height:28px;padding:2px;cursor:pointer;border-radius:4px;">
+        </div>
+      </div>
+
+      <!-- カラーグリッド -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="checkbox" id="editGridOn" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;" onchange="document.getElementById('editGridOpts').style.display=this.checked?'block':'none'">
+        <label for="editGridOn" style="font-size:13px;cursor:pointer;">カラー展開グリッドを1枚目に追加（複数写真→1枚）</label>
+      </div>
+      <div id="editGridOpts" style="display:none;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:12px;">
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:6px;">レイアウト</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="gridLayoutOpts">
+          <div class="ctbtn sel" onclick="setEditGrid('2x2',this)">2×2（4色）</div>
+          <div class="ctbtn" onclick="setEditGrid('3x2',this)">3×2（6色）</div>
+          <div class="ctbtn" onclick="setEditGrid('2x1',this)">横2（2色）</div>
+          <div class="ctbtn" onclick="setEditGrid('3x1',this)">横3（3色）</div>
+        </div>
+        <div id="gridColorLabels" style="display:grid;gap:6px;"></div>
+        <div style="font-size:11px;color:#555;margin-top:6px;">カラー名を入力するとグリッド内に表示（任意）</div>
+      </div>
+
+      <button class="btn" onclick="applyImageEdits()" style="background:#c8f060;color:#000;font-weight:bold;width:100%;">✅ 画像編集を適用してアップロード</button>
+      <div id="editStatus" style="font-size:12px;color:#888;margin-top:8px;text-align:center;min-height:18px;"></div>
+    </div>
+
     <!-- 商品名 -->
     <div class="fs">
       <label>商品名 <span class="req">*</span></label>
@@ -815,6 +867,9 @@ function renderPreviews(){
       ${img.error?'<div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(240,96,96,.8);color:#fff;font-size:10px;text-align:center;border-radius:4px;padding:2px;">⚠️ 失敗</div>':''}
     </div>`).join('');
   c.style.display=imgs.length?'block':'none';
+  const editPanel=document.getElementById('imgEditPanel');
+  if(editPanel) editPanel.style.display=imgs.length?'block':'none';
+  if(imgs.length&&document.getElementById('editGridOn')?.checked) updateGridColorLabels();
   const done=imgs.filter(i=>i.url).length;
   const uploading=imgs.filter(i=>i.uploading).length;
   if(uploading>0) c.textContent=`⏳ ${uploading}枚アップロード中... （${done}/${imgs.length}完了）`;
@@ -826,6 +881,197 @@ function delImg(i){
   updateListingImgUrls();
   renderPreviews();
 }
+
+// ========== 画像編集機能 ==========
+let editFrame='none', editGridLayout='2x2';
+
+function setEditFrame(val,el){
+  editFrame=val;
+  document.querySelectorAll('#frameOpts .ctbtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function setEditGrid(val,el){
+  editGridLayout=val;
+  document.querySelectorAll('#gridLayoutOpts .ctbtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  updateGridColorLabels();
+}
+function updateGridColorLabels(){
+  const map={'2x2':4,'3x2':6,'2x1':2,'3x1':3};
+  const n=map[editGridLayout]||4;
+  const cont=document.getElementById('gridColorLabels');
+  if(!cont)return;
+  cont.style.gridTemplateColumns=editGridLayout.startsWith('3')?'repeat(3,1fr)':'repeat(2,1fr)';
+  cont.innerHTML='';
+  for(let i=0;i<n;i++){
+    const inp=document.createElement('input');
+    inp.type='text'; inp.id='gridLabel'+i;
+    inp.placeholder='カラー'+(i+1)+'（任意）';
+    inp.autocomplete='off';
+    inp.style.cssText='font-size:11px;padding:4px 8px;';
+    cont.appendChild(inp);
+  }
+}
+async function editSingleImage(dataUrl,opts){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sz=Math.max(img.width,img.height);
+      let pad=0;
+      if(opts.frame==='thin') pad=Math.floor(sz*0.03);
+      else if(opts.frame==='thick') pad=Math.floor(sz*0.07);
+      else if(opts.frame==='rounded'||opts.frame==='shadow') pad=Math.floor(sz*0.04);
+      const full=sz+pad*2;
+      const c=document.createElement('canvas');
+      c.width=full; c.height=full;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,full,full);
+      if(opts.frame==='shadow'){
+        ctx.shadowColor='rgba(0,0,0,0.35)';
+        ctx.shadowBlur=Math.floor(sz*0.04);
+        ctx.shadowOffsetX=Math.floor(sz*0.015);
+        ctx.shadowOffsetY=Math.floor(sz*0.015);
+      }
+      if(opts.frame==='rounded'){
+        const r=Math.floor(sz*0.06);
+        ctx.beginPath();
+        ctx.moveTo(pad+r,pad);ctx.lineTo(pad+sz-r,pad);
+        ctx.quadraticCurveTo(pad+sz,pad,pad+sz,pad+r);
+        ctx.lineTo(pad+sz,pad+sz-r);
+        ctx.quadraticCurveTo(pad+sz,pad+sz,pad+sz-r,pad+sz);
+        ctx.lineTo(pad+r,pad+sz);
+        ctx.quadraticCurveTo(pad,pad+sz,pad,pad+sz-r);
+        ctx.lineTo(pad,pad+r);
+        ctx.quadraticCurveTo(pad,pad,pad+r,pad);
+        ctx.closePath(); ctx.clip();
+      }
+      ctx.drawImage(img,pad,pad,sz,sz);
+      ctx.shadowColor='transparent';
+      if(opts.banner&&(opts.line1||opts.line2||opts.line3)){
+        const lines=[opts.line1,opts.line2,opts.line3].filter(Boolean);
+        const lh=Math.max(22,Math.floor(full*0.05));
+        const bh=lh*lines.length+Math.floor(lh*0.5);
+        ctx.fillStyle=opts.bannerBg||'#000000';
+        ctx.fillRect(0,full-bh,full,bh);
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        lines.forEach((line,idx)=>{
+          const fs=idx===0?Math.floor(lh*0.55):Math.floor(lh*0.45);
+          ctx.font=idx===0?`bold ${fs}px Arial`:`${fs}px Arial`;
+          ctx.fillStyle=opts.bannerFg||'#ffffff';
+          ctx.fillText(line,full/2,full-bh+(idx+0.6)*lh,full*0.95);
+        });
+      }
+      if(opts.wm){
+        ctx.save(); ctx.globalAlpha=0.20; ctx.fillStyle='#111111';
+        const fs=Math.max(14,Math.floor(full*0.038));
+        ctx.font=`bold ${fs}px Arial`;
+        ctx.translate(full/2,full/2); ctx.rotate(-Math.PI/4);
+        const step=full*0.22;
+        for(let yy=-full;yy<full;yy+=step)
+          for(let xx=-full;xx<full;xx+=step*2.2)
+            ctx.fillText(opts.wm,xx,yy);
+        ctx.restore();
+      }
+      res(c.toDataURL('image/jpeg',0.9));
+    };
+    img.onerror=()=>res(dataUrl);
+    img.src=dataUrl;
+  });
+}
+async function buildColorGrid(dataUrls,layout,labels){
+  return new Promise(res=>{
+    const cellSz=800;
+    const lm={'2x2':{cols:2,rows:2},'3x2':{cols:3,rows:2},'2x1':{cols:2,rows:1},'3x1':{cols:3,rows:1}};
+    const {cols,rows}=lm[layout]||{cols:2,rows:2};
+    const gap=Math.floor(cellSz*0.015);
+    const labelH=Math.floor(cellSz*0.09);
+    const totalW=cols*cellSz+(cols+1)*gap;
+    const totalH=rows*(cellSz+labelH)+(rows+1)*gap;
+    const c=document.createElement('canvas');
+    c.width=totalW; c.height=totalH;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#f5f5f5'; ctx.fillRect(0,0,totalW,totalH);
+    const count=Math.min(dataUrls.length,cols*rows);
+    if(count===0){res(null);return;}
+    let loaded=0;
+    dataUrls.slice(0,count).forEach((src,i)=>{
+      const col=i%cols, row=Math.floor(i/cols);
+      const x=gap+col*(cellSz+gap), y=gap+row*(cellSz+labelH+gap);
+      const im=new Image();
+      im.onload=()=>{
+        const s=Math.min(im.width,im.height);
+        ctx.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,x,y,cellSz,cellSz);
+        if(labels[i]){
+          ctx.fillStyle='#222222'; ctx.fillRect(x,y+cellSz,cellSz,labelH);
+          ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.font=`bold ${Math.floor(labelH*0.55)}px Arial`;
+          ctx.fillText(labels[i],x+cellSz/2,y+cellSz+labelH/2,cellSz*0.9);
+        }else{
+          ctx.fillStyle='#eeeeee'; ctx.fillRect(x,y+cellSz,cellSz,labelH);
+        }
+        if(++loaded===count) res(c.toDataURL('image/jpeg',0.92));
+      };
+      im.onerror=()=>{if(++loaded===count) res(c.toDataURL('image/jpeg',0.92));};
+      im.src=src;
+    });
+  });
+}
+async function applyImageEdits(){
+  if(!imgs.length){alert('先に画像を追加してください');return;}
+  const ibKey=document.getElementById('imgbbKey').value.trim();
+  if(!ibKey){alert('imgBB APIキーを設定してください（⚙️設定タブ）');return;}
+  const statusEl=document.getElementById('editStatus');
+  statusEl.style.color='#888'; statusEl.textContent='⏳ 処理中...';
+  const wmStr=document.getElementById('wmText').value.trim();
+  const bannerOn=document.getElementById('editBannerOn').checked;
+  const gridOn=document.getElementById('editGridOn').checked;
+  const opts={
+    frame:editFrame, banner:bannerOn,
+    line1:bannerOn?document.getElementById('editLine1').value.trim():'',
+    line2:bannerOn?document.getElementById('editLine2').value.trim():'',
+    line3:bannerOn?document.getElementById('editLine3').value.trim():'',
+    bannerBg:bannerOn?document.getElementById('editBannerBg').value:'#000000',
+    bannerFg:bannerOn?document.getElementById('editBannerFg').value:'#ffffff',
+    wm:wmStr
+  };
+  try{
+    let newImgs=[...imgs];
+    if(gridOn&&imgs.length>=2){
+      const lm={'2x2':4,'3x2':6,'2x1':2,'3x1':3};
+      const n=Math.min(imgs.length,lm[editGridLayout]||4);
+      const labels=Array.from({length:n},(_,i)=>(document.getElementById('gridLabel'+i)||{}).value||'').map(v=>v.trim());
+      statusEl.textContent='⏳ グリッド画像を作成中...';
+      const gridDataUrl=await buildColorGrid(imgs.slice(0,n).map(i=>i.dataUrl),editGridLayout,labels);
+      if(gridDataUrl){
+        const gridEdited=await editSingleImage(gridDataUrl,opts);
+        statusEl.textContent='⏳ グリッド画像をアップロード中...';
+        const fd=new FormData(); fd.append('key',ibKey); fd.append('image',gridEdited.split(',')[1]);
+        const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
+        const d=await r.json();
+        if(d&&d.success) newImgs.unshift({file:null,dataUrl:gridEdited,url:d.data.url,uploading:false});
+      }
+    }
+    for(let i=0;i<newImgs.length;i++){
+      if(newImgs[i].url&&newImgs[i].url.includes('ibb.co')) continue;
+      statusEl.textContent=`⏳ 画像を処理中 ${i+1}/${newImgs.length}...`;
+      const edited=await editSingleImage(newImgs[i].dataUrl,opts);
+      const fd=new FormData(); fd.append('key',ibKey); fd.append('image',edited.split(',')[1]);
+      const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d&&d.success) newImgs[i]={...newImgs[i],dataUrl:edited,url:d.data.url,uploading:false};
+    }
+    imgs=newImgs;
+    updateListingImgUrls();
+    renderPreviews();
+    statusEl.style.color='#c8f060';
+    statusEl.textContent='✅ 完了！ '+imgs.filter(i=>i.url).length+'枚のURLを取得しました';
+  }catch(e){
+    statusEl.style.color='#f06060';
+    statusEl.textContent='⚠️ エラー: '+e.message;
+  }
+}
+// ========== 画像編集ここまで ==========
 
 // ブランド
 function selBrand(id,name,fromChip){
