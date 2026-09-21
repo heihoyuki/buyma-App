@@ -772,10 +772,14 @@ function addImgs(files){
       renderPreviews();
       if(ibKey){
         try{
-          const base64=dataUrl.split(',')[1];
+          const wmStr=document.getElementById('wmText').value.trim();
+          const doBanner=document.getElementById('wmPname').checked;
+          const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
+          const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+          const b64=await toSquareB64(dataUrl,wmStr,brandStr,shortStr);
           const fd=new FormData();
           fd.append('key',ibKey);
-          fd.append('image',base64);
+          fd.append('image',b64||dataUrl.split(',')[1]);
           const res=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});
           const d=await res.json();
           if(d.success){
@@ -1160,8 +1164,13 @@ function addImgsToUrlDrop(files){
       renderImgs();
       if(ibKey){
         try{
+          const wmStr=document.getElementById('wmText').value.trim();
+          const doBanner=document.getElementById('wmPname').checked;
+          const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
+          const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+          const b64=await toSquareB64(dataUrl,wmStr,brandStr,shortStr);
           const fd=new FormData();
-          fd.append('image',dataUrl.split(',')[1]);
+          fd.append('image',b64||dataUrl.split(',')[1]);
           const res=await fetch('https://api.imgbb.com/1/upload?key='+ibKey,{method:'POST',body:fd});
           const json=await res.json();
           if(json.success){imgs[idx].url=json.data.url;imgs[idx].uploading=false;renderImgs();}
@@ -1489,6 +1498,8 @@ async function submitBuyma(){
     const rest=imgUrls.slice(5);
     const results=await Promise.all(targets.map(async u=>{
       try{
+        // imgBBのURL（スクショ・アップ済み・透かし入り）は再処理しない
+        if(u.includes('ibb.co')) return u;
         const wmStr=document.getElementById('wmText').value.trim();
         const doBanner=document.getElementById('wmPname').checked;
         const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
