@@ -561,6 +561,14 @@ textarea{resize:vertical;line-height:1.6;}
       <input type="text" id="batchUrlFilter" placeholder="例：sale　pandora　charm　（スペース区切りでOR検索）" autocomplete="off">
       <div style="font-size:11px;color:#555;margin-top:5px;">入力するとURLにキーワードを含む商品のみ出品（空欄=フィルターなし）</div>
     </div>
+    <!-- バリエーション展開 -->
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:#161616;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:14px;">
+      <input type="checkbox" id="batchExpandVariants" checked style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;margin-top:2px;">
+      <div>
+        <label for="batchExpandVariants" style="font-size:13px;cursor:pointer;">色・サイズバリエーションを自動展開</label>
+        <div style="font-size:11px;color:#555;margin-top:3px;">各商品ページにアクセスして全カラー・サイズのURLを収集→別々に出品（処理時間が増えます）</div>
+      </div>
+    </div>
     <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;">
       <div style="color:#c8f060;font-weight:bold;margin-bottom:6px;">⚙️ 価格設定（自動）</div>
       <div style="color:#888;line-height:1.8;">
@@ -1676,6 +1684,34 @@ async function callClaude(prompt,maxTok=4000){
   if(d.error) throw new Error(d.error.message||'API error');
   return (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')||'';
 }
+async function expandVariants(productUrl){
+  try{
+    const apiKey=document.getElementById('apiKey').value.trim();
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
+        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:2}],
+        messages:[{role:'user',content:`以下の商品ページにアクセスして、全ての色違い・サイズ違いバリエーションのURLをリストアップしてください。
+
+URL: ${productUrl}
+
+確認する場所:
+- カラースウォッチ・サイズボタンの各リンク（href / data-href / data-url属性）
+- URLに color= size= sku= variant= selectedColor= などを含むリンク
+- URLに色名（black, white, pink, navy, beige等）やサイズ（xs, s, m, l, xl, xxs等）が入っている商品リンク
+- 同一商品の別バリエーションへのリンク
+
+現在のURL自身も含めて、JSON配列のみで返してください（説明文不要）:
+["URL1","URL2",...]`}]})
+    });
+    const d=await r.json();
+    const txt=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    const m=txt.match(/\[[\s\S]*\]/);
+    if(m){try{const arr=JSON.parse(m[0]).filter(u=>typeof u==='string'&&u.startsWith('http'));if(arr.length)return[...new Set(arr)];}catch{}}
+  }catch{}
+  return[productUrl];
+}
 async function fetchBrandUrls(pageUrl){
   logB('ブランドページを取得中...');
   const baseUrl=new URL(pageUrl).origin;
@@ -1819,6 +1855,21 @@ async function startBatch(){
       urls=urls.filter(u=>keywords.some(k=>u.toLowerCase().includes(k)));
       logB('フィルター「'+filterRaw+'」適用: '+before+'件→'+urls.length+'件','ok');
       if(!urls.length){logB('フィルターに一致する商品がありません','err');return;}
+    }
+    // バリエーション展開
+    if(document.getElementById('batchExpandVariants').checked&&urls.length){
+      logB('色・サイズバリエーションを展開中... ('+urls.length+'件の商品)');
+      const expanded=[];
+      for(let i=0;i<urls.length;i++){
+        if(!batchRunning)break;
+        document.getElementById('batchProgress').textContent='バリエーション確認中: '+(i+1)+'/'+urls.length;
+        const variants=await expandVariants(urls[i]);
+        expanded.push(...variants);
+        if(variants.length>1) logB('  └ '+(variants.length)+'バリエーション発見: '+urls[i].slice(0,50)+'...','ok');
+      }
+      const before=urls.length;
+      urls=[...new Set(expanded)];
+      logB('展開完了: '+before+'商品 → '+urls.length+'件（色・サイズ込み）','ok');
     }
     const total=urls.length;
     for(let i=0;i<urls.length;i++){
