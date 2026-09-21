@@ -2051,8 +2051,8 @@ ${extra?'商品情報:\n'+extra:''}
     const rs=await Promise.all(imgs.map(async u=>{
       try{const b64=await toSquareB64(u,wmStr,brandStr,shortStr);if(!b64)return u;const fd=new FormData();fd.append('key',ibKey);fd.append('image',b64);const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});const j=await r.json();return j.data?.url||u;}catch{return u;}
     }));
-    processedImgs=rs.filter(Boolean).map(url=>({url,position:0}));
-  }else{processedImgs=imgs.map(url=>({url,position:0}));}
+    processedImgs=rs.filter(Boolean).map((path,i)=>({path,position:i+1}));
+  }else{processedImgs=imgs.map((path,i)=>({path,position:i+1}));}
   if(!processedImgs.length)throw new Error('画像取得失敗');
   // 送料
   const shipLines=document.getElementById('shipMethodDefs').value.split('\n').map(s=>s.trim()).filter(s=>s.includes(':'));
