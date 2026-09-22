@@ -2063,9 +2063,13 @@ ${extra?'商品情報:\n'+extra:''}
     processedImgs=rs.filter(Boolean).map((path,i)=>({path,position:i+1}));
   }else{processedImgs=imgs.map((path,i)=>({path,position:i+1}));}
   if(!processedImgs.length)throw new Error('画像取得失敗');
-  // 送料
-  const shipLines=document.getElementById('shipMethodDefs').value.split('\n').map(s=>s.trim()).filter(s=>s.includes(':'));
-  const shipping_methods=shipLines.map(l=>{const[label,id]=l.split(':');return(label&&id&&!isNaN(parseInt(id)))?{shipping_method_id:parseInt(id)}:null;}).filter(Boolean);
+  // 送料：Australia Postのみ
+  const shipping_methods=[{shipping_method_id:918102}];
+  // 補足リンク（ブランド＋カテゴリ）
+  const rlinkParts=[];
+  if(BRAND_LINKS[selBrandId]) rlinkParts.push(BRAND_LINKS[selBrandId]);
+  if(selCatTop&&CAT_LINKS[selCatTop]) rlinkParts.push(CAT_LINKS[selCatTop]);
+  const colorsize_comments=rlinkParts.join('\n\n');
   // カラーマスターID
   const CM={'ホワイト':1,'白':1,'white':1,'ブラック':2,'黒':2,'black':2,'グレー':3,'灰':3,'gray':3,'grey':3,'silver grey':3,'ブラウン':4,'茶':4,'brown':4,'cocoa':4,'chestnut':4,'tan':4,'ベージュ':5,'beige':5,'oat':5,'cream':5,'ivory':5,'sand':5,'グリーン':6,'緑':6,'green':6,'olive':6,'ブルー':7,'青':7,'blue':7,'navy':16,'ネイビー':16,'紺':16,'パープル':8,'紫':8,'purple':8,'lavender':8,'イエロー':9,'黄':9,'yellow':9,'mustard':9,'ピンク':10,'pink':10,'blush':10,'rose':10,'mauve':10,'レッド':11,'赤':11,'red':11,'rouge':11,'burgundy':11,'wine':11,'オレンジ':12,'orange':12,'rust':12,'シルバー':13,'銀':13,'silver':13,'ゴールド':14,'金':14,'gold':14,'brass':14,'ネイビー':16,'navy':16,'マルチカラー':99,'multi':99,'その他':99};
   function batchColorId(n){if(!n)return 99;const lc=n.toLowerCase().trim();if(CM[lc])return CM[lc];for(const[k,id]of Object.entries(CM)){if(lc.includes(k)||k.includes(lc))return id;}return 99;}
@@ -2083,7 +2087,7 @@ ${extra?'商品情報:\n'+extra:''}
   const buyerNotes=['【買い付け先】'+productUrl,costAud?'【買い付け金額】'+costAud+' AUD':'','【レート】1AUD='+settings.rate+'円','【国際送料(AUS→JP)】'+settings.intl+' AUD','【予想利益】¥'+Math.round(profit).toLocaleString()+'（利益率'+Math.round(profit/sell*100)+'%）'].filter(Boolean).join('\n');
   const token=document.getElementById('buymaToken').value.trim();
   const shopDomain=new URL(productUrl).hostname.replace(/^www\./,'');
-  const payload={product:{control:'publish',reference_number:'REF-B-'+Date.now(),name:pname,comments:desc+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT,price:sell,brand_id:selBrandId,category_id:selCatId,buying_area_id:parseInt(document.getElementById('buyArea').value),shipping_area_id:parseInt(document.getElementById('shipArea').value),available_until:new Date(Date.now()+90*24*3600*1000).toISOString().slice(0,10),images:processedImgs,shipping_methods,options,variants,order_quantity:10,buyer_notes:buyerNotes,shop_urls:[{label:shopDomain,url:productUrl,description:''}]}};
+  const payload={product:{control:'publish',reference_number:'REF-B-'+Date.now(),name:pname,comments:desc+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT,price:sell,brand_id:selBrandId,category_id:selCatId,buying_area_id:parseInt(document.getElementById('buyArea').value),shipping_area_id:parseInt(document.getElementById('shipArea').value),available_until:new Date(Date.now()+90*24*3600*1000).toISOString().slice(0,10),images:processedImgs,shipping_methods,options,variants,order_quantity:10,buyer_notes:buyerNotes,shop_urls:[{label:shopDomain,url:productUrl,description:''}],...(colorsize_comments?{colorsize_comments}:{})}};
   const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','X-Buyma-Token':token},body:JSON.stringify(payload)});
   const rawText=await res.text();
   let listingId='';try{const d=JSON.parse(rawText);listingId=d.data?.id?String(d.data.id):(d.id?String(d.id):'');}catch{}
