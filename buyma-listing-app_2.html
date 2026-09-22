@@ -2122,7 +2122,7 @@ async function startBatch(){
   try{
     let urls;
     if(manualRaw){
-      urls=manualRaw.split('\n').map(u=>u.trim()).filter(u=>u.startsWith('http'));
+      urls=[...new Set(manualRaw.split('\n').map(u=>{const t=u.trim();try{const p=new URL(t);return p.origin+p.pathname;}catch{return t;}}).filter(u=>u.startsWith('http')))];
       logB('手動URL: '+urls.length+'件を使用','ok');
     }else{
       urls=await fetchBrandUrls(batchUrl);
@@ -2150,8 +2150,13 @@ async function startBatch(){
         if(variants.length>1) logB('  └ '+(variants.length)+'バリエーション発見: '+urls[i].slice(0,50)+'...','ok');
       }
       const before=urls.length;
-      urls=[...new Set(expanded)];
-      logB('展開完了: '+before+'商品 → '+urls.length+'件（色・サイズ込み）','ok');
+      // クエリパラメータを除いたパスで重複除去（サイズ違いvariant=XXXを同一商品として扱う）
+      const seen=new Set();
+      urls=expanded.filter(u=>{
+        try{const k=new URL(u).origin+new URL(u).pathname.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;}
+        catch{return true;}
+      });
+      logB('展開完了: '+before+'件 → 重複除去後 '+urls.length+'件（色バリエーション別）','ok');
     }
     const total=urls.length;
     for(let i=0;i<urls.length;i++){
