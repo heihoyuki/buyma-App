@@ -2056,7 +2056,7 @@ ${extra?'商品情報:\n'+extra:''}
   if(!processedImgs.length)throw new Error('画像取得失敗');
   // 送料
   const shipLines=document.getElementById('shipMethodDefs').value.split('\n').map(s=>s.trim()).filter(s=>s.includes(':'));
-  const shipping_methods=shipLines.map(l=>{const[label,id]=l.split(':');return(label&&id&&!isNaN(parseInt(id)))?{id:parseInt(id),days_min:7,days_max:21,price:0,note:''}:null;}).filter(Boolean);
+  const shipping_methods=shipLines.map(l=>{const[label,id]=l.split(':');return(label&&id&&!isNaN(parseInt(id)))?{shipping_method_id:parseInt(id)}:null;}).filter(Boolean);
   // メモ
   const totalCost=(costAud+settings.intl)*settings.rate;
   const profit=sell*0.945-totalCost;
