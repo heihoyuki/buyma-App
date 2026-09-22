@@ -2009,10 +2009,17 @@ JSON配列のみで返してください（説明文不要）:
   return fallback;
 }
 async function processBatchItem(productUrl,settings){
-  const fetchTxt=await callClaude(`以下のURLから商品情報を取得してJSONのみで返してください（前後のテキスト不要）。
-URL: ${productUrl}
+  const jsonUrl=productUrl.replace(/[?#].*/,'')+'.json';
+  const fetchTxt=await callClaude(`以下の商品URLから情報を取得してJSONのみで返してください（前後のテキスト不要）。
+
+【手順】
+1. まず ${jsonUrl} にアクセス（Shopify JSON API。使えれば確実に価格・画像が取れる）
+2. 失敗・情報不足なら ${productUrl} のHTML（JSON-LD / window.__NEXT_DATA__ / メタタグ / 価格要素）から取得
+
+【重要】price_aud は必ず通常販売価格（AUD）を数値で返すこと。セール価格でなく通常価格。価格不明の場合は null。
+
 形式:
-{"product_name":"商品名","price_aud":数値orNull,"description":"説明","details":"詳細","material":"素材","color":"カラー","image_urls":["url1","url2"]}`,5000);
+{"product_name":"商品名","price_aud":数値orNull,"description":"説明","details":"詳細","material":"素材","color":"カラー","image_urls":["url1","url2","url3"]}`,6000);
   const botSigns=['Cloudflare','Just a moment','cf-ray','DDoS','Checking your browser'];
   if(botSigns.some(s=>fetchTxt.includes(s)))throw new Error('BOTブロック');
   const g=k=>{const m=fetchTxt.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)\"'));return m?m[1].replace(/\\n/g,'\n'):null;};
@@ -2021,7 +2028,9 @@ URL: ${productUrl}
   const costAud=gn('price_aud')||0;
   const imgM=fetchTxt.match(/https?:\/\/[^\s"]+\.(?:jpg|jpeg|png|webp)[^\s"]*/gi)||[];
   const imgs=[...new Set(imgM)].slice(0,5);
-  if(!pname0&&!costAud)throw new Error('商品情報取得失敗');
+  if(!pname0)throw new Error('商品情報取得失敗（商品名なし）');
+  if(!costAud)throw new Error('価格取得失敗（price_aud=0） ※商品ページがJS描画の場合は .json エンドポイントもブロックされている可能性があります');
+  logB(`  └ 価格取得: ${costAud} AUD → 販売予定¥${Math.round(batchAutoPrice(costAud,settings.rate,settings.intl)).toLocaleString()}（送料${settings.intl}AUD込み）`);
   const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
   const extra=[desc0,det0,mat0,col0].filter(Boolean).join('\n');
   const descTxt=await callClaude(`あなたはBUYMA出品専門ライターです。日本人バイヤー向けの出品コメントをJSONのみで返してください。
