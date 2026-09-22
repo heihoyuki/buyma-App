@@ -2082,7 +2082,8 @@ ${extra?'商品情報:\n'+extra:''}
   const profit=sell*0.945-totalCost;
   const buyerNotes=['【買い付け先】'+productUrl,costAud?'【買い付け金額】'+costAud+' AUD':'','【レート】1AUD='+settings.rate+'円','【国際送料(AUS→JP)】'+settings.intl+' AUD','【予想利益】¥'+Math.round(profit).toLocaleString()+'（利益率'+Math.round(profit/sell*100)+'%）'].filter(Boolean).join('\n');
   const token=document.getElementById('buymaToken').value.trim();
-  const payload={product:{control:'publish',reference_number:'REF-B-'+Date.now(),name:pname,comments:desc+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT,price:sell,brand_id:selBrandId,category_id:selCatId,buying_area_id:parseInt(document.getElementById('buyArea').value),shipping_area_id:parseInt(document.getElementById('shipArea').value),available_until:new Date(Date.now()+90*24*3600*1000).toISOString().slice(0,10),images:processedImgs,shipping_methods,options,variants,order_quantity:10,buyer_notes:buyerNotes}};
+  const shopDomain=new URL(productUrl).hostname.replace(/^www\./,'');
+  const payload={product:{control:'publish',reference_number:'REF-B-'+Date.now(),name:pname,comments:desc+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT,price:sell,brand_id:selBrandId,category_id:selCatId,buying_area_id:parseInt(document.getElementById('buyArea').value),shipping_area_id:parseInt(document.getElementById('shipArea').value),available_until:new Date(Date.now()+90*24*3600*1000).toISOString().slice(0,10),images:processedImgs,shipping_methods,options,variants,order_quantity:10,buyer_notes:buyerNotes,shop_urls:[{label:shopDomain,url:productUrl,description:''}]}};
   const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','X-Buyma-Token':token},body:JSON.stringify(payload)});
   const rawText=await res.text();
   let listingId='';try{const d=JSON.parse(rawText);listingId=d.data?.id?String(d.data.id):(d.id?String(d.id):'');}catch{}
