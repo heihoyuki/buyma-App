@@ -141,7 +141,6 @@ textarea{resize:vertical;line-height:1.6;}
     <div class="stab active" id="tab1" onclick="tabGo(1)">① 写真・情報</div>
     <div class="stab" id="tab2">② 生成確認</div>
     <div class="stab" id="tab3" onclick="tabGo(3)">③ 出品</div>
-    <div class="stab" id="tab4" onclick="tabGo(4)">④ バッチ</div>
   </div>
 
   <!-- SCREEN 1 -->
@@ -171,6 +170,14 @@ textarea{resize:vertical;line-height:1.6;}
         <div class="urlrow">
           <input type="text" id="fetchUrl" placeholder="https://www.theiconic.com.au/...">
           <button class="btn btn-s btn-sm" onclick="doFetchUrl()">読み取る</button>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="btn btn-s btn-sm" onclick="toggleColorUrls()" id="colorUrlsToggleBtn" style="width:100%;background:#1a1a1a;color:#c8f060;border:1px solid #333;font-size:12px;">🎨 カラー展開URL（複数色を1出品に）</button>
+        </div>
+        <div id="colorUrlsWrap" style="display:none;margin-top:8px;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:12px;">
+          <div style="font-size:12px;color:#888;margin-bottom:6px;">色違い商品のURLを1行ずつ入力（メインURLと合わせて全色の写真＋カラー選択を1出品にまとめます）</div>
+          <textarea id="colorUrls" rows="4" placeholder="https://...（黒）&#10;https://...（白）&#10;https://...（ベージュ）" style="font-size:12px;line-height:1.6;" autocomplete="off"></textarea>
+          <button class="btn btn-s btn-sm" onclick="doFetchMultiColor()" style="width:100%;margin-top:8px;background:#c8f060;color:#000;font-weight:bold;">🎨 全カラーを一括読み込み</button>
         </div>
         <div class="ust" id="ust"></div>
         <div class="imgdrop" id="imgdrop">
@@ -507,132 +514,6 @@ textarea{resize:vertical;line-height:1.6;}
     </div>
   </div>
 </div>
-  <!-- SCREEN 4: バッチ出品 -->
-  <div class="screen" id="s4">
-    <!-- API・出品設定アコーディオン -->
-    <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:14px;">
-      <div onclick="toggleBatchSettings()" style="padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:#c8f060;font-weight:bold;font-size:13px;">⚙️ API・出品設定</span>
-        <span id="batchSettingsArrow" style="color:#888;font-size:12px;">▼ 開く</span>
-      </div>
-      <div id="batchSettingsBody" style="display:none;padding:0 14px 14px;">
-        <div class="fs"><label>Claude APIキー <span class="req">*</span></label><input type="password" id="b_apiKey" placeholder="sk-ant-..." autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
-        <div class="fs"><label>BUYMAトークン <span class="req">*</span></label><input type="password" id="b_buymaToken" placeholder="Bearer ..." autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
-        <div class="fs"><label>imgBB APIキー（ウォーターマーク用）</label><input type="text" id="b_imgbbKey" autocomplete="off" style="font-family:monospace;font-size:12px;"></div>
-        <div class="fs"><label>ウォーターマーク文字</label><input type="text" id="b_wmText" placeholder="例：Australia Shop" autocomplete="off"></div>
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
-          <input type="checkbox" id="b_wmPname" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;">
-          <label for="b_wmPname" style="font-size:13px;">バナーを入れる（ブランド名＋短縮商品名）</label>
-        </div>
-        <div id="b_wmBannerShortWrap" style="display:none;padding-bottom:8px;">
-          <input type="text" id="b_wmBannerShort" placeholder="例：チャーム、バッグ、ネックレス" autocomplete="off">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="fs">
-            <label>買い付け国</label>
-            <select id="b_buyArea">
-              <option value="2004001000" selected>🇦🇺 オーストラリア</option>
-              <option value="1000000000">🇯🇵 日本</option>
-              <option value="2001001000">🇺🇸 アメリカ</option>
-              <option value="2002001000">🇬🇧 イギリス</option>
-              <option value="2002002000">🇫🇷 フランス</option>
-              <option value="2002003000">🇮🇹 イタリア</option>
-              <option value="2002004000">🇩🇪 ドイツ</option>
-              <option value="2003001000">🇰🇷 韓国</option>
-              <option value="2003002000">🇭🇰 香港</option>
-            </select>
-          </div>
-          <div class="fs">
-            <label>発送地</label>
-            <select id="b_shipArea">
-              <option value="2004001000" selected>🇦🇺 オーストラリア</option>
-              <option value="1000000000">🇯🇵 日本</option>
-              <option value="2001001000">🇺🇸 アメリカ</option>
-              <option value="2002001000">🇬🇧 イギリス</option>
-              <option value="2002002000">🇫🇷 フランス</option>
-              <option value="2002003000">🇮🇹 イタリア</option>
-              <option value="2002004000">🇩🇪 ドイツ</option>
-              <option value="2003001000">🇰🇷 韓国</option>
-              <option value="2003002000">🇭🇰 香港</option>
-            </select>
-          </div>
-        </div>
-        <div class="fs">
-          <label>送料設定（ラベル:ID 形式で1行ずつ）</label>
-          <textarea id="b_shipMethodDefs" rows="3" placeholder="例：EMS:123&#10;DHL Express:456" style="font-family:monospace;font-size:12px;"></textarea>
-        </div>
-      </div>
-    </div>
-    <!-- ブランド選択 -->
-    <div class="fs">
-      <label>ブランド <span class="req">*</span></label>
-      <div id="batchSelbrandtag"></div>
-      <div class="bsearch" style="position:relative;">
-        <input type="text" id="b2search" placeholder="ブランド名を検索（例：Pandora、UGG...）" oninput="searchBrand2(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
-        <div class="bdd" id="b2dd"></div>
-      </div>
-    </div>
-    <!-- カテゴリ選択 -->
-    <div class="fs">
-      <label>カテゴリ <span class="req">*</span></label>
-      <div class="cattop" id="batchCattop"></div>
-      <div id="batchCatmid2" style="display:none;margin-top:8px;">
-        <div style="font-size:11px;color:#555;margin-bottom:6px;">サブカテゴリを選択</div>
-        <div class="cattop" id="batchCatmid2btns"></div>
-      </div>
-      <div id="batchCatmid3" style="display:none;margin-top:8px;">
-        <div style="font-size:11px;color:#555;margin-bottom:6px;">詳細カテゴリを選択</div>
-        <div class="cattop" id="batchCatmid3btns"></div>
-      </div>
-      <div id="batchCatSelected" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(96,212,240,.08);border:1px solid #60d4f0;border-radius:8px;font-size:13px;color:#60d4f0;"></div>
-    </div>
-    <!-- ブランドページURL -->
-    <div class="fs">
-      <label>ブランドページURL（自動取得）</label>
-      <input type="text" id="batchPageUrl" placeholder="https://www.pandora.net/en-au/jewellery/charms/" autocomplete="off">
-      <div style="font-size:11px;color:#555;margin-top:5px;">カテゴリページを指定するとAIが商品URLを自動収集します</div>
-    </div>
-    <!-- 手動URL入力 -->
-    <div class="fs">
-      <label>商品URLを手動貼り付け（任意）</label>
-      <textarea id="batchManualUrls" rows="4" placeholder="1行に1URLずつ（JSレンダリングサイトで自動取得できない場合に使用）&#10;https://www.calvinklein.com.au/product1&#10;https://www.calvinklein.com.au/product2" style="font-size:11px;font-family:monospace;min-height:80px;"></textarea>
-      <div style="font-size:11px;color:#555;margin-top:5px;">入力した場合、上の自動取得をスキップしてこのURLリストを使用します</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div class="fs">
-        <label>為替レート（1AUD=円）</label>
-        <input type="number" id="batchRate" value="115" min="50" max="200" step="1">
-      </div>
-      <div class="fs">
-        <label>国際送料（AUD）</label>
-        <input type="number" id="batchIntl" value="25" min="0" step="5">
-      </div>
-    </div>
-    <div class="fs">
-      <label>URLキーワードフィルター（任意）</label>
-      <input type="text" id="batchUrlFilter" placeholder="例：sale　pandora　charm　（スペース区切りでOR検索）" autocomplete="off">
-      <div style="font-size:11px;color:#555;margin-top:5px;">入力するとURLにキーワードを含む商品のみ出品（空欄=フィルターなし）</div>
-    </div>
-    <!-- バリエーション展開 -->
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:#161616;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:14px;">
-      <input type="checkbox" id="batchExpandVariants" checked style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;margin-top:2px;">
-      <div>
-        <label for="batchExpandVariants" style="font-size:13px;cursor:pointer;">色・サイズバリエーションを自動展開</label>
-        <div style="font-size:11px;color:#555;margin-top:3px;">各商品ページにアクセスして全カラー・サイズのURLを収集→別々に出品（処理時間が増えます）</div>
-      </div>
-    </div>
-    <div style="background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;">
-      <div style="color:#c8f060;font-weight:bold;margin-bottom:6px;">⚙️ 価格設定（自動）</div>
-      <div style="color:#888;line-height:1.8;">
-        利益率 20% ／ 最低利益 ¥1,500 ／ 5件ごとにBUYMA自動確認
-      </div>
-    </div>
-    <div id="batchProgress" style="font-size:13px;color:#c8f060;margin-bottom:8px;min-height:20px;font-weight:500;"></div>
-    <div id="batchLog" style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;padding:10px;min-height:100px;max-height:320px;overflow-y:auto;font-size:11px;font-family:monospace;line-height:1.7;display:none;margin-bottom:12px;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn" id="batchStartBtn" onclick="startBatch()" style="flex:1;">🚀 バッチ出品開始</button>
-      <button class="btn" id="batchStopBtn" onclick="stopBatch()" style="display:none;background:#333;flex:1;">⏹ 中止</button>
-    </div>
   </div>
 
 <div class="moverlay" id="mOK">
@@ -719,41 +600,6 @@ window.addEventListener('load',()=>{
   document.getElementById('wmPname').addEventListener('change',e=>{localStorage.setItem('wmpn',e.target.checked?'1':'0');document.getElementById('wmBannerShortWrap').style.display=e.target.checked?'block':'none';});
   document.getElementById('wmBannerShort').addEventListener('input',e=>localStorage.setItem('wmbs',e.target.value));
 
-  // バッチタブ設定 - localStorageから読み込み
-  {
-    const lsMap={b_apiKey:'cak',b_buymaToken:'bmt',b_imgbbKey:'ibk',b_wmText:'wmt',b_wmBannerShort:'wmbs',b_shipMethodDefs:'smdefs'};
-    Object.entries(lsMap).forEach(([id,key])=>{const val=localStorage.getItem(key);const el=document.getElementById(id);if(val&&el)el.value=val;});
-    if(localStorage.getItem('wmpn')==='1'){document.getElementById('b_wmPname').checked=true;document.getElementById('b_wmBannerShortWrap').style.display='block';}
-    // 送料設定のデフォルト
-    if(!document.getElementById('b_shipMethodDefs').value) document.getElementById('b_shipMethodDefs').value=document.getElementById('shipMethodDefs').value;
-    // APIキー未設定なら設定欄を自動展開
-    if(!localStorage.getItem('cak')||!localStorage.getItem('bmt')){document.getElementById('batchSettingsBody').style.display='block';document.getElementById('batchSettingsArrow').textContent='▲ 閉じる';}
-  }
-  // バッチ↔メイン 双方向同期
-  function bSync(bId,mId,lsKey,evt='input'){
-    const bEl=document.getElementById(bId),mEl=document.getElementById(mId);
-    if(!bEl)return;
-    bEl.addEventListener(evt,e=>{if(mEl)mEl.value=e.target.value;if(lsKey)localStorage.setItem(lsKey,e.target.value);});
-    if(mEl)mEl.addEventListener(evt,e=>{bEl.value=e.target.value;});
-  }
-  bSync('b_apiKey','apiKey','cak');
-  bSync('b_buymaToken','buymaToken','bmt');
-  bSync('b_imgbbKey','imgbbKey','ibk');
-  bSync('b_wmText','wmText','wmt');
-  bSync('b_wmBannerShort','wmBannerShort','wmbs');
-  bSync('b_shipMethodDefs','shipMethodDefs','smdefs');
-  document.getElementById('b_wmPname').addEventListener('change',e=>{
-    const chk=e.target.checked;
-    document.getElementById('wmPname').checked=chk;
-    document.getElementById('b_wmBannerShortWrap').style.display=chk?'block':'none';
-    document.getElementById('wmBannerShortWrap').style.display=chk?'block':'none';
-    localStorage.setItem('wmpn',chk?'1':'0');
-  });
-  document.getElementById('b_buyArea').addEventListener('change',e=>{
-    document.getElementById('buyArea').value=e.target.value;
-    document.getElementById('b_shipArea').value=e.target.value;
-    document.getElementById('shipArea').value=e.target.value;
-  });
 
   // ブランド履歴チップを表示
   renderFavBrands();
@@ -767,14 +613,6 @@ window.addEventListener('load',()=>{
     ct.appendChild(b);
   });
 
-  // カテゴリ上位（④バッチタブ）
-  const bct=document.getElementById('batchCattop');
-  Object.keys(CAT_TREE).forEach(top=>{
-    const b=document.createElement('div');
-    b.className='ctbtn'; b.textContent=top;
-    b.addEventListener('click',()=>selTopCatBatch(top,b));
-    bct.appendChild(b);
-  });
 
   // バリエーション初期1行
   addVariant();
@@ -1102,74 +940,8 @@ function searchBrand(q){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.bsearch')){
     document.getElementById('bdd').classList.remove('open');
-    document.getElementById('b2dd').classList.remove('open');
   }
 });
-function toggleBatchSettings(){
-  const body=document.getElementById('batchSettingsBody');
-  const arrow=document.getElementById('batchSettingsArrow');
-  const open=body.style.display==='none'||body.style.display==='';
-  body.style.display=open?'block':'none';
-  arrow.textContent=open?'▲ 閉じる':'▼ 開く';
-}
-function searchBrand2(q){
-  const dd=document.getElementById('b2dd');
-  if(!q||q.length<1){dd.classList.remove('open');return;}
-  const res=ALL_BRANDS.filter(b=>b[1].toLowerCase().includes(q.toLowerCase())).slice(0,25);
-  if(!res.length){dd.classList.remove('open');return;}
-  dd.innerHTML=res.map(b=>`<div class="bopt" onmousedown="event.preventDefault();selBrand2(${b[0]},'${b[1]}')" ontouchend="event.preventDefault();selBrand2(${b[0]},'${b[1]}')">${b[1]}</div>`).join('');
-  dd.classList.add('open');
-}
-function selBrand2(id,name){
-  selBrandId=id; selBrandName=name;
-  if(id&&id!==0) saveBrandToHistory(id,name);
-  document.getElementById('b2search').value='';
-  document.getElementById('b2dd').classList.remove('open');
-  document.getElementById('batchSelbrandtag').innerHTML=id?`<div class="selbrand">${name} <button onclick="clearBrand2()">×</button></div>`:'';
-}
-function clearBrand2(){
-  selBrandId=null; selBrandName='';
-  document.getElementById('batchSelbrandtag').innerHTML='';
-}
-function selTopCatBatch(top,el){
-  selCatTop=top;
-  document.querySelectorAll('#batchCattop .ctbtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
-  const mid2btns=document.getElementById('batchCatmid2btns');
-  mid2btns.innerHTML='';
-  Object.keys(CAT_TREE[top]).forEach(mid=>{
-    const b=document.createElement('div');
-    b.className='ctbtn'; b.textContent=mid;
-    b.addEventListener('click',()=>selMidCatBatch(top,mid,b));
-    mid2btns.appendChild(b);
-  });
-  document.getElementById('batchCatmid2').style.display='block';
-  document.getElementById('batchCatmid3').style.display='none';
-  document.getElementById('batchCatSelected').style.display='none';
-  selCatId=null;
-}
-function selMidCatBatch(top,mid,el){
-  document.querySelectorAll('#batchCatmid2btns .ctbtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
-  const mid3btns=document.getElementById('batchCatmid3btns');
-  mid3btns.innerHTML='';
-  CAT_TREE[top][mid].forEach(([id,name])=>{
-    const b=document.createElement('div');
-    b.className='ctbtn'; b.textContent=name;
-    b.addEventListener('click',()=>selDetailCatBatch(id,top,mid,name,b));
-    mid3btns.appendChild(b);
-  });
-  document.getElementById('batchCatmid3').style.display='block';
-  document.getElementById('batchCatSelected').style.display='none';
-  selCatId=null;
-}
-function selDetailCatBatch(id,top,mid,name,el){
-  document.querySelectorAll('#batchCatmid3btns .ctbtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
-  selCatId=parseInt(id);
-  const sel=document.getElementById('batchCatSelected');
-  sel.textContent=`✅ ${top} > ${mid} > ${name}`;
-  sel.style.display='block';
 }
 
 // カテゴリ
@@ -1426,6 +1198,116 @@ function addImgsToUrlDrop(files){
     r.readAsDataURL(f);
   });
 }
+function toggleColorUrls(){
+  const wrap=document.getElementById('colorUrlsWrap');
+  const btn=document.getElementById('colorUrlsToggleBtn');
+  const show=wrap.style.display==='none';
+  wrap.style.display=show?'block':'none';
+  btn.style.background=show?'#c8f060':'#1a1a1a';
+  btn.style.color=show?'#000':'#c8f060';
+}
+
+async function doFetchMultiColor(){
+  const mainUrl=document.getElementById('fetchUrl').value.trim();
+  const colorRaw=document.getElementById('colorUrls').value.trim();
+  const key=document.getElementById('apiKey').value.trim();
+  if(!mainUrl&&!colorRaw){alert('メインURLまたはカラーURLを入力してください');return;}
+  if(!key){alert('Claude APIキーを入力してください（⚙️設定）');return;}
+  const rawUrls=[mainUrl,...colorRaw.split('\n').map(u=>u.trim()).filter(u=>u.startsWith('http'))].filter(Boolean);
+  const seenPath=new Set();
+  const urls=rawUrls.filter(u=>{try{const k=new URL(u).origin+new URL(u).pathname.toLowerCase();if(seenPath.has(k))return false;seenPath.add(k);return true;}catch{return true;}});
+  if(!urls.length){alert('有効なURLがありません');return;}
+  const st=document.getElementById('ust');
+  const drop=document.getElementById('imgdrop');
+  st.className='ust loading';
+  st.textContent='🎨 '+urls.length+'色を読み取り中...';
+  drop.classList.remove('show');
+  const callC=async(prompt,maxTok)=>{
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),40000);
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,
+          tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:5}],
+          messages:[{role:'user',content:prompt}]})
+      });
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    }finally{clearTimeout(timer);}
+  };
+  const normImg=u=>u.replace(/&amp;/g,'&').replace(/([?&]sw=)\d+/i,'$11200');
+  const CM={'white':1,'ホワイト':1,'black':2,'ブラック':2,'gray':3,'grey':3,'グレー':3,'brown':4,'ブラウン':4,'cocoa':4,'tan':4,'beige':5,'ベージュ':5,'oat':5,'cream':5,'ivory':5,'sand':5,'green':6,'グリーン':6,'olive':6,'blue':7,'ブルー':7,'navy':16,'ネイビー':16,'purple':8,'パープル':8,'lavender':8,'yellow':9,'イエロー':9,'mustard':9,'pink':10,'ピンク':10,'blush':10,'rose':10,'mauve':10,'red':11,'レッド':11,'rouge':11,'burgundy':11,'orange':12,'オレンジ':12,'rust':12,'silver':13,'シルバー':13,'gold':14,'ゴールド':14,'brass':14,'clear':15,'クリア':15,'multi':99,'その他':99};
+  function getColorId(n){if(!n)return 99;const lc=n.toLowerCase().trim();if(CM[lc])return CM[lc];for(const[k,id]of Object.entries(CM)){if(lc.includes(k)||k.includes(lc))return id;}return 99;}
+  const allImages=[],colorData=[];
+  let mainInfo=null;
+  for(let i=0;i<urls.length;i++){
+    const url=urls[i];
+    st.textContent=`🎨 読み取り中 ${i+1}/${urls.length}...`;
+    try{
+      const jsonUrl=url.replace(/[?#].*$/,'').replace(/\/$/,'')+'.json';
+      const txt=await callC(`以下のURLから商品情報を取得してJSONのみで返してください。\n\n取得URL（順番に試す）:\n1. ${jsonUrl} ← Shopify JSON API（あれば最優先）\n2. ${url} ← 商品ページ\n\n画像URLは<meta og:image>・Shopify product.images・img[src]から全て収集すること。\n\n{"image_urls":["https://..."],"product_name":"商品名","price_aud":数値orNull,"description":"説明","details":"詳細","material":"素材","color":"このバリアントのカラー名（英語）"}`,6000);
+      let p=null;
+      const mm=txt.match(/\{[\s\S]*\}/);
+      if(mm){try{p=JSON.parse(mm[0]);}catch{}}
+      if(!p){p={};
+        const g=k=>{const m=txt.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)\"'));return m?m[1]:null;};
+        p.product_name=g('product_name');p.description=g('description');p.details=g('details');p.material=g('material');p.color=g('color');
+        const pm=txt.match(/"price_aud"\s*:\s*([\d.]+)/);if(pm)p.price_aud=parseFloat(pm[1]);
+        const im=txt.match(/"image_urls"\s*:\s*\[([\s\S]*?)(?:\]|$)/);if(im)p.image_urls=im[1].match(/https?:\/\/[^\s"]+/g)||[];
+      }
+      if(!p.image_urls||!p.image_urls.length){
+        const gen=txt.match(/https?:\/\/[^\s"'<>\\]+\.(?:jpg|jpeg|png|webp)(\?[^\s"'<>\\]*)?/gi)||[];
+        p.image_urls=[...new Set(gen.filter(u=>!/\.(svg|gif|ico)/i.test(u)).map(normImg))].slice(0,8);
+      } else {
+        const seen2=new Set();
+        p.image_urls=[...new Set((p.image_urls||[]).map(normImg).filter(u=>!/\.(svg|gif|ico)/i.test(u)))].filter(u=>{const k=u.split('?')[0];if(seen2.has(k))return false;seen2.add(k);return true;}).slice(0,8);
+      }
+      if(i===0) mainInfo=p;
+      const urlSlug=(url.match(/\/products\/([^/?#]+)/)||[])[1]||'';
+      const rawColor=p.color||urlSlug.replace(/-[a-f0-9]{6,}$/,'').split('-').filter(w=>!['the','a','an','of','in','and','or','with'].includes(w)).pop()||'その他';
+      colorData.push({url,color:rawColor,masterId:getColorId(rawColor),images:p.image_urls||[]});
+      allImages.push(...(p.image_urls||[]));
+    }catch(e){
+      colorData.push({url,color:'その他',masterId:99,images:[]});
+    }
+  }
+  // 画像を結合・重複除去（最大20枚）
+  const seenImg=new Set();
+  const combinedImages=allImages.filter(u=>{const k=u.split('?')[0];if(seenImg.has(k))return false;seenImg.add(k);return true;}).slice(0,20);
+  // メイン情報を反映
+  if(mainInfo){
+    if(mainInfo.product_name) document.getElementById('pname').value=mainInfo.product_name;
+    if(mainInfo.price_aud){document.getElementById('costPrice').value=mainInfo.price_aud;calcProfit();}
+    const extra=[mainInfo.description,mainInfo.details,mainInfo.material].filter(Boolean).join('\n');
+    if(extra&&!document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
+  }
+  if(combinedImages.length) document.getElementById('listingImgUrls').value=combinedImages.join('\n');
+  document.getElementById('srcUrl').value=urls[0]||'';
+  // バリエーションを自動入力
+  if(colorData.length>0){
+    document.querySelectorAll('.varrow').forEach(r=>r.remove());
+    colorData.forEach(({color,masterId})=>{
+      addVariant();
+      const rows=document.querySelectorAll('.varrow');
+      const row=rows[rows.length-1];
+      const colorSel=row.querySelector('.colorsel');
+      const colorTxt=row.querySelector('.colortxt');
+      const sizeIn=row.querySelector('input[type=text]:not(.colortxt)');
+      if(sizeIn) sizeIn.value='one size';
+      if(colorSel){colorSel.value=masterId;}
+      if(colorTxt){const n=color.charAt(0).toUpperCase()+color.slice(1);colorTxt.value=n;}
+    });
+  }
+  updateNameCount();
+  const ok=colorData.filter(c=>c.images.length>0).length;
+  st.className='ust ok';
+  st.textContent=`✅ ${ok}/${urls.length}色を読み取り完了！画像${combinedImages.length}枚をまとめました`;
+  if(combinedImages.length===0) drop.classList.add('show');
+}
+
 async function doFetchUrl(){
   const url=document.getElementById('fetchUrl').value.trim();
   const key=document.getElementById('apiKey').value.trim();
@@ -1895,14 +1777,13 @@ let genDone=false;
 function tabGo(n){
   if(n===1) showScr('s1');
   if(n===3&&genDone) showScr('s3');
-  if(n===4) showScr('s4');
 }
 function goBack(){showScr('s1');}
 function cm(id){document.getElementById(id).classList.remove('open');}
 function showScr(id){
-  ['s1','s2','s3','s4'].forEach(s=>document.getElementById(s).classList.remove('active'));
+  ['s1','s2','s3'].forEach(s=>document.getElementById(s).classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs=['tab1','tab2','tab3','tab4'],cur=['s1','s2','s3','s4'].indexOf(id);
+  const tabs=['tab1','tab2','tab3'],cur=['s1','s2','s3'].indexOf(id);
   tabs.forEach((t,i)=>{
     const el=document.getElementById(t);
     el.classList.remove('active','done');
@@ -1912,288 +1793,6 @@ function showScr(id){
   window.scrollTo(0,0);
 }
 
-// ===== バッチ出品 =====
-let batchRunning=false,batchIds=[];
-function logB(msg,type=''){
-  const log=document.getElementById('batchLog');
-  if(!log)return;
-  const colors={ok:'#c8f060',err:'#f06060',warn:'#ffa500'};
-  const d=document.createElement('div');
-  d.style.color=colors[type]||'#888';
-  const t=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  d.textContent=`[${t}] ${msg}`;
-  log.appendChild(d);log.scrollTop=log.scrollHeight;
-}
-function batchAutoPrice(costAud,rate,intlAud){
-  const total=(costAud+intlAud)*rate;
-  let sell=Math.ceil(total/0.745/100)*100;
-  if(sell*0.945-total<1500) sell=Math.ceil((total+1500)/0.945/100)*100;
-  return sell;
-}
-async function callClaude(prompt,maxTok=4000){
-  const apiKey=document.getElementById('apiKey').value.trim();
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:maxTok,tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:5}],messages:[{role:'user',content:prompt}]})
-  });
-  const d=await r.json();
-  if(d.error) throw new Error(d.error.message||'API error');
-  return (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')||'';
-}
-async function expandVariants(productUrl){
-  try{
-    const apiKey=document.getElementById('apiKey').value.trim();
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-beta':'web-fetch-2025-09-10','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
-        tools:[{type:'web_fetch_20250910',name:'web_fetch',max_uses:2}],
-        messages:[{role:'user',content:`以下の商品ページにアクセスして、全ての色違い・サイズ違いバリエーションのURLをリストアップしてください。
-
-URL: ${productUrl}
-
-確認する場所:
-- カラースウォッチ・サイズボタンの各リンク（href / data-href / data-url属性）
-- URLに color= size= sku= variant= selectedColor= などを含むリンク
-- URLに色名（black, white, pink, navy, beige等）やサイズ（xs, s, m, l, xl, xxs等）が入っている商品リンク
-- 同一商品の別バリエーションへのリンク
-
-現在のURL自身も含めて、JSON配列のみで返してください（説明文不要）:
-["URL1","URL2",...]`}]})
-    });
-    const d=await r.json();
-    const txt=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-    const m=txt.match(/\[[\s\S]*\]/);
-    if(m){try{const arr=JSON.parse(m[0]).filter(u=>typeof u==='string'&&u.startsWith('http'));if(arr.length)return[...new Set(arr)];}catch{}}
-  }catch{}
-  return[productUrl];
-}
-async function fetchBrandUrls(pageUrl){
-  logB('ブランドページを取得中...');
-  const baseUrl=new URL(pageUrl).origin;
-  const hostname=new URL(pageUrl).hostname;
-  const txt=await callClaude(`以下のURLから商品詳細ページのURLをできるだけ多く収集してください。
-
-【手順 - 順番に全て試すこと】
-1. ${pageUrl} にアクセス（<a href>・JSON-LD・__NEXT_DATA__・XHR/APIレスポンスのJSON・ページ内Javascriptのデータから商品URLを探す）
-2. 商品URLが20件未満なら ${baseUrl}/robots.txt を確認してSitemapの場所を取得
-3. 見つかったサイトマップ（またはデフォルト: ${baseUrl}/sitemap_products.xml → ${baseUrl}/sitemap.xml）にアクセスして商品URLを収集
-4. それでも20件未満なら https://www.google.com/search?q=site:${hostname}+${encodeURIComponent(new URL(pageUrl).pathname.split('/').filter(Boolean).join(' '))}&num=100 を検索して商品URLを収集
-
-【商品URLの判定基準】
-- ${baseUrl} で始まる絶対URL
-- カテゴリ・検索・画像・CDN・.js/.css/.xml は除外
-
-JSON配列のみで返してください（説明文不要）:
-["URL1","URL2",...]`,12000);
-  logB('応答確認: '+(txt.slice(0,150).replace(/\n/g,' ')||'(空)'));
-  // BOTブロック検出
-  const botSigns=['Cloudflare','Just a moment','DDoS','Checking your browser','Access Denied','captcha','cf-ray'];
-  if(botSigns.some(s=>txt.toLowerCase().includes(s.toLowerCase()))){
-    logB('⛔ このサイトはBOT対策でブロックされています。URLを手動で入力してください。','err');
-    return[];
-  }
-  // 最長の[...]ブロックを探す
-  const m=txt.match(/\[[\s\S]*\]/);
-  if(m){
-    try{
-      const arr=JSON.parse(m[0]).filter(u=>typeof u==='string'&&u.startsWith('http'));
-      if(arr.length) return arr;
-    }catch{}
-  }
-  // フォールバック: テキストからhttpURLを直接抽出
-  const urlMatches=txt.match(/https?:\/\/[^\s"',\]<>]+/g)||[];
-  const fallback=[...new Set(urlMatches)].filter(u=>u.startsWith('http')&&u.length>20&&!u.match(/\.(jpg|jpeg|png|webp|gif|svg|css|js)/i));
-  if(fallback.length) logB('URLを直接抽出: '+fallback.length+'件','ok');
-  return fallback;
-}
-async function processBatchItem(productUrl,settings){
-  const jsonUrl=productUrl.replace(/[?#].*/,'')+'.json';
-  const fetchTxt=await callClaude(`以下の商品URLから情報を取得してJSONのみで返してください（前後のテキスト不要）。
-
-【手順】
-1. まず ${jsonUrl} にアクセス（Shopify JSON API。使えれば確実に価格・画像が取れる）
-2. 失敗・情報不足なら ${productUrl} のHTML（JSON-LD / window.__NEXT_DATA__ / メタタグ / 価格要素）から取得
-
-【重要】price_aud は必ず通常販売価格（AUD）を数値で返すこと。セール価格でなく通常価格。価格不明の場合は null。
-
-形式:
-{"product_name":"商品名","price_aud":数値orNull,"description":"説明","details":"詳細","material":"素材","color":"カラー","image_urls":["url1","url2","url3"]}`,6000);
-  const botSigns=['Cloudflare','Just a moment','cf-ray','DDoS','Checking your browser'];
-  if(botSigns.some(s=>fetchTxt.includes(s)))throw new Error('BOTブロック');
-  const g=k=>{const m=fetchTxt.match(new RegExp('"'+k+'"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)\"'));return m?m[1].replace(/\\n/g,'\n'):null;};
-  const gn=k=>{const m=fetchTxt.match(new RegExp('"'+k+'"\\s*:\\s*([\\d.]+)'));return m?parseFloat(m[1]):null;};
-  const pname0=g('product_name'),desc0=g('description'),det0=g('details'),mat0=g('material'),col0=g('color');
-  const costAud=gn('price_aud')||0;
-  const imgM=fetchTxt.match(/https?:\/\/[^\s"]+\.(?:jpg|jpeg|png|webp)[^\s"]*/gi)||[];
-  const imgs=[...new Set(imgM)].slice(0,5);
-  if(!pname0)throw new Error('商品情報取得失敗（商品名なし）');
-  if(!costAud)throw new Error('価格取得失敗（price_aud=0） ※商品ページがJS描画の場合は .json エンドポイントもブロックされている可能性があります');
-  logB(`  └ 価格取得: ${costAud} AUD → 販売予定¥${Math.round(batchAutoPrice(costAud,settings.rate,settings.intl)).toLocaleString()}（送料${settings.intl}AUD込み）`);
-  const brandLabel=(selBrandId&&selBrandId!==0)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
-  const extra=[desc0,det0,mat0,col0].filter(Boolean).join('\n');
-  const descTxt=await callClaude(`あなたはBUYMA出品専門ライターです。日本人バイヤー向けの出品コメントをJSONのみで返してください。
-ブランド: ${brandLabel}
-商品名: ${pname0||''}
-${extra?'商品情報:\n'+extra:''}
-形式:
-{"product_name":"${brandLabel?'['+brandLabel+'] ':''}商品名（全角換算60文字以内）","description":"200〜400文字の説明文"}`,3000);
-  const nm=descTxt.match(/"product_name"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  const dm=descTxt.match(/"description"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  let pname=nm?nm[1].replace(/\\n/g,'\n'):(pname0||'');
-  let desc=dm?dm[1].replace(/\\n/g,'\n'):(desc0||'');
-  // 60文字カット
-  let len=0,cut=0;for(let i=0;i<pname.length;i++){len+=(pname.charCodeAt(i)>127?2:1);if(len<=60)cut=i+1;else break;}
-  pname=pname.slice(0,cut);
-  desc=fmtDesc(desc);
-  const sell=batchAutoPrice(costAud,settings.rate,settings.intl);
-  if(!sell)throw new Error('価格計算不可（AUD価格なし）');
-  // 画像処理
-  const ibKey=document.getElementById('imgbbKey').value.trim();
-  const wmStr=document.getElementById('wmText').value.trim();
-  const doBanner=document.getElementById('wmPname').checked;
-  const brandStr=doBanner?brandLabel:'';
-  const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
-  let processedImgs=[];
-  if(ibKey&&imgs.length){
-    const rs=await Promise.all(imgs.map(async u=>{
-      try{const b64=await toSquareB64(u,wmStr,brandStr,shortStr);if(!b64)return u;const fd=new FormData();fd.append('key',ibKey);fd.append('image',b64);const r=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:fd});const j=await r.json();return j.data?.url||u;}catch{return u;}
-    }));
-    processedImgs=rs.filter(Boolean).map((path,i)=>({path,position:i+1}));
-  }else{processedImgs=imgs.map((path,i)=>({path,position:i+1}));}
-  if(!processedImgs.length)throw new Error('画像取得失敗');
-  // 送料：Australia Postのみ
-  const shipping_methods=[{shipping_method_id:918102}];
-  // 補足リンク（ブランド＋カテゴリ）
-  const rlinkParts=[];
-  if(BRAND_LINKS[selBrandId]) rlinkParts.push(BRAND_LINKS[selBrandId]);
-  if(selCatTop&&CAT_LINKS[selCatTop]) rlinkParts.push(CAT_LINKS[selCatTop]);
-  const colorsize_comments=rlinkParts.join('\n\n');
-  // カラーマスターID
-  const CM={'ホワイト':1,'白':1,'white':1,'ブラック':2,'黒':2,'black':2,'グレー':3,'灰':3,'gray':3,'grey':3,'silver grey':3,'ブラウン':4,'茶':4,'brown':4,'cocoa':4,'chestnut':4,'tan':4,'ベージュ':5,'beige':5,'oat':5,'cream':5,'ivory':5,'sand':5,'グリーン':6,'緑':6,'green':6,'olive':6,'ブルー':7,'青':7,'blue':7,'navy':16,'ネイビー':16,'紺':16,'パープル':8,'紫':8,'purple':8,'lavender':8,'イエロー':9,'黄':9,'yellow':9,'mustard':9,'ピンク':10,'pink':10,'blush':10,'rose':10,'mauve':10,'レッド':11,'赤':11,'red':11,'rouge':11,'burgundy':11,'wine':11,'オレンジ':12,'orange':12,'rust':12,'シルバー':13,'銀':13,'silver':13,'ゴールド':14,'金':14,'gold':14,'brass':14,'ネイビー':16,'navy':16,'マルチカラー':99,'multi':99,'その他':99};
-  function batchColorId(n){if(!n)return 99;const lc=n.toLowerCase().trim();if(CM[lc])return CM[lc];for(const[k,id]of Object.entries(CM)){if(lc.includes(k)||k.includes(lc))return id;}return 99;}
-  // URL・col0からカラー名を抽出
-  const urlSlug=(productUrl.match(/\/products\/([^/?#]+)/)||[])[1]||'';
-  const urlColor=urlSlug.replace(/-[a-f0-9]{6,}$/,'').split('-').filter(w=>!['the','a','an','of','for','in','and','or','with','by','from','on','at','to','is','as','its'].includes(w)).join(' ');
-  const rawColor=(col0||urlColor||'その他').trim();
-  const colorName=rawColor.charAt(0).toUpperCase()+rawColor.slice(1);
-  const colorMasterId=batchColorId(rawColor);
-  const options=[{type:'size',value:'FREE',position:1,master_id:0},{type:'color',value:colorName,position:1,master_id:colorMasterId}];
-  const variants=[{options:[{type:'size',value:'FREE'},{type:'color',value:colorName}],stock_type:'purchase_for_order'}];
-  // メモ
-  const totalCost=(costAud+settings.intl)*settings.rate;
-  const profit=sell*0.945-totalCost;
-  const buyerNotes=['【買い付け先】'+productUrl,costAud?'【買い付け金額】'+costAud+' AUD':'','【レート】1AUD='+settings.rate+'円','【国際送料(AUS→JP)】'+settings.intl+' AUD','【予想利益】¥'+Math.round(profit).toLocaleString()+'（利益率'+Math.round(profit/sell*100)+'%）'].filter(Boolean).join('\n');
-  const token=document.getElementById('buymaToken').value.trim();
-  const shopDomain=new URL(productUrl).hostname.replace(/^www\./,'');
-  const payload={product:{control:'publish',reference_number:'REF-B-'+Date.now(),name:pname,comments:desc+'\n\nーーーーーーーーーーーーー\n'+FIXED_COMMENT,price:sell,brand_id:selBrandId,category_id:selCatId,buying_area_id:parseInt(document.getElementById('buyArea').value),shipping_area_id:parseInt(document.getElementById('shipArea').value),available_until:new Date(Date.now()+90*24*3600*1000).toISOString().slice(0,10),images:processedImgs,shipping_methods,options,variants,order_quantity:10,buyer_notes:buyerNotes,shop_urls:[{label:shopDomain,url:productUrl,description:''}],...(colorsize_comments?{colorsize_comments}:{})}};
-  const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','X-Buyma-Token':token},body:JSON.stringify(payload)});
-  const rawText=await res.text();
-  let listingId='';try{const d=JSON.parse(rawText);listingId=d.data?.id?String(d.data.id):(d.id?String(d.id):'');}catch{}
-  if(res.status!==201&&res.status!==202)throw new Error('BUYMA APIエラー('+res.status+'): '+rawText.slice(0,80));
-  return{success:true,id:listingId,name:pname,price:sell};
-}
-async function verifyBatchItems(ids){
-  const lastId=ids.filter(Boolean).pop();
-  if(!lastId)return true;
-  try{
-    const txt=await callClaude(`以下のURLにアクセスして、商品ページが存在する場合は"OK"、存在しない場合は"NG"のみ返してください。
-URL: https://www.buyma.com/item/${lastId}/`,100);
-    return txt.trim().toUpperCase().includes('OK');
-  }catch{return false;}
-}
-async function startBatch(){
-  const batchUrl=document.getElementById('batchPageUrl').value.trim();
-  const manualRaw=document.getElementById('batchManualUrls').value.trim();
-  if(!batchUrl&&!manualRaw)return alert('ブランドページURLまたは商品URLを入力してください');
-  if(!document.getElementById('apiKey').value.trim())return alert('Claude APIキーを設定してください（⚙️ API・出品設定）');
-  if(!document.getElementById('buymaToken').value.trim())return alert('BUYMAトークンを設定してください（⚙️ API・出品設定）');
-  if(!selBrandId||selBrandId===0)return alert('ブランドを選択してください');
-  if(!selCatId)return alert('カテゴリを選択してください');
-  const rate=parseFloat(document.getElementById('batchRate').value)||115;
-  const intl=parseFloat(document.getElementById('batchIntl').value)||25;
-  const settings={rate,intl};
-  const log=document.getElementById('batchLog');
-  log.innerHTML='';log.style.display='block';
-  document.getElementById('batchStartBtn').style.display='none';
-  document.getElementById('batchStopBtn').style.display='';
-  batchRunning=true;batchIds=[];
-  try{
-    let urls;
-    if(manualRaw){
-      urls=[...new Set(manualRaw.split('\n').map(u=>{const t=u.trim();try{const p=new URL(t);return p.origin+p.pathname;}catch{return t;}}).filter(u=>u.startsWith('http')))];
-      logB('手動URL: '+urls.length+'件を使用','ok');
-    }else{
-      urls=await fetchBrandUrls(batchUrl);
-    }
-    if(!urls.length){logB('商品URLが見つかりませんでした','err');return;}
-    logB(urls.length+'件の商品URLを取得','ok');
-    // URLキーワードフィルター
-    const filterRaw=document.getElementById('batchUrlFilter').value.trim();
-    if(filterRaw){
-      const keywords=filterRaw.toLowerCase().split(/\s+/).filter(Boolean);
-      const before=urls.length;
-      urls=urls.filter(u=>keywords.some(k=>u.toLowerCase().includes(k)));
-      logB('フィルター「'+filterRaw+'」適用: '+before+'件→'+urls.length+'件','ok');
-      if(!urls.length){logB('フィルターに一致する商品がありません','err');return;}
-    }
-    // バリエーション展開
-    if(document.getElementById('batchExpandVariants').checked&&urls.length){
-      logB('色・サイズバリエーションを展開中... ('+urls.length+'件の商品)');
-      const expanded=[];
-      for(let i=0;i<urls.length;i++){
-        if(!batchRunning)break;
-        document.getElementById('batchProgress').textContent='バリエーション確認中: '+(i+1)+'/'+urls.length;
-        const variants=await expandVariants(urls[i]);
-        expanded.push(...variants);
-        if(variants.length>1) logB('  └ '+(variants.length)+'バリエーション発見: '+urls[i].slice(0,50)+'...','ok');
-      }
-      const before=urls.length;
-      // クエリパラメータを除いたパスで重複除去（サイズ違いvariant=XXXを同一商品として扱う）
-      const seen=new Set();
-      urls=expanded.filter(u=>{
-        try{const k=new URL(u).origin+new URL(u).pathname.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;}
-        catch{return true;}
-      });
-      logB('展開完了: '+before+'件 → 重複除去後 '+urls.length+'件（色バリエーション別）','ok');
-    }
-    const total=urls.length;
-    for(let i=0;i<urls.length;i++){
-      if(!batchRunning)break;
-      const url=urls[i];
-      document.getElementById('batchProgress').textContent='進捗: '+(i+1)+'/'+total;
-      logB('['+(i+1)+'/'+total+'] '+url.slice(0,70)+'...');
-      try{
-        const r=await processBatchItem(url,settings);
-        batchIds.push(r.id);
-        logB('✅ '+r.name+' ¥'+r.price.toLocaleString()+' (ID:'+r.id+')','ok');
-      }catch(e){batchIds.push(null);logB('❌ 失敗: '+e.message,'err');}
-      // 5件ごとに確認
-      if((i+1)%5===0&&batchRunning){
-        logB('BUYMA出品確認中（'+((i+1))+'件目）...');
-        const ok=await verifyBatchItems(batchIds.slice(-5));
-        if(ok){logB('✅ BUYMAへの反映を確認。続行します。','ok');}
-        else{logB('⚠️ BUYMAへの反映が確認できませんでした。処理を停止します。','warn');batchRunning=false;break;}
-      }
-      if(batchRunning&&i<urls.length-1)await new Promise(r=>setTimeout(r,3500));
-    }
-    const ok=batchIds.filter(Boolean).length;
-    logB('===== 完了: '+ok+'/'+total+'件 出品成功 =====',ok===total?'ok':'warn');
-  }catch(e){logB('エラー: '+e.message,'err');}
-  finally{
-    batchRunning=false;
-    document.getElementById('batchStartBtn').style.display='';
-    document.getElementById('batchStopBtn').style.display='none';
-    document.getElementById('batchProgress').textContent='';
-  }
-}
-function stopBatch(){
-  batchRunning=false;
-  logB('中止しました。','warn');
-  document.getElementById('batchStartBtn').style.display='';
-  document.getElementById('batchStopBtn').style.display='none';
-}
 function resetForm(){
   showScr('s1');
   imgs=[];selBrandId=null;selBrandName='';selCatId=null;selCatTop='';selTags=['送料無料'];
