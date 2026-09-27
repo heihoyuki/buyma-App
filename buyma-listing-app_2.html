@@ -129,6 +129,21 @@ textarea{resize:vertical;line-height:1.6;}
   .prow{grid-template-columns:1fr;}
   .varrow{grid-template-columns:1fr 1fr 70px 36px;}
 }
+/* 在庫確認タブ */
+.scard{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;}
+.scard:hover,.scard:active{border-color:#c8f060;}
+.scard h4{font-size:14px;font-weight:500;margin-bottom:4px;}
+.scard .smeta{font-size:12px;color:#888;}
+.vgrid{overflow-x:auto;margin-top:10px;margin-bottom:4px;}
+.vgtable{width:100%;border-collapse:collapse;font-size:12px;}
+.vgtable th,.vgtable td{padding:9px 8px;border:1px solid #2e2e2e;text-align:center;min-width:64px;}
+.vgtable th{background:#242424;color:#888;font-weight:500;}
+.vgtable th:first-child{text-align:left;min-width:80px;}
+.vgtable td.vc-in{background:rgba(200,240,96,.1);color:#c8f060;cursor:pointer;font-size:11px;}
+.vgtable td.vc-out{background:rgba(240,96,96,.07);color:#f06060;cursor:pointer;font-size:11px;}
+.vgtable td.vc-uk{background:#1a1a1a;color:#555;cursor:pointer;font-size:11px;}
+.vgtable td.vc-na{color:#333;font-size:11px;}
+.instock-chip{display:inline-block;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:3px 8px;margin:3px;font-size:12px;color:#c8f060;}
 </style>
 </head>
 <body>
@@ -141,6 +156,7 @@ textarea{resize:vertical;line-height:1.6;}
     <div class="stab active" id="tab1" onclick="tabGo(1)">① 写真・情報</div>
     <div class="stab" id="tab2">② 生成確認</div>
     <div class="stab" id="tab3" onclick="tabGo(3)">③ 出品</div>
+    <div class="stab" id="tab4" onclick="tabGo(4)">④ 在庫確認</div>
   </div>
 
   <!-- SCREEN 1 -->
@@ -499,6 +515,45 @@ textarea{resize:vertical;line-height:1.6;}
     <div class="actrow">
       <button class="btn btn-s" onclick="goBack()">← 修正する</button>
       <button class="btn btn-p" onclick="submitBuyma()">BUYMAで出品する →</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: 在庫確認・再出品 -->
+  <div class="screen" id="s4">
+    <div class="notice">買い付けURLを入力すると色・サイズの在庫状況を自動確認します。タップで手動切り替えも可能です。</div>
+
+    <!-- URL入力 -->
+    <div class="fs">
+      <label>買い付けURL（停止中商品の仕入れ先URL）</label>
+      <div class="urlrow">
+        <input type="text" id="checkUrl" placeholder="https://www.theiconic.com.au/..." autocomplete="off">
+        <button class="btn btn-s btn-sm" onclick="doCheckStock()">在庫確認</button>
+      </div>
+      <div class="ust" id="checkSt"></div>
+    </div>
+
+    <!-- 在庫グリッド（確認後に表示） -->
+    <div id="varStockWrap" style="display:none;">
+      <div class="fs">
+        <label>在庫状況（タップで切り替え）</label>
+        <div id="varStockGrid"></div>
+        <div style="font-size:11px;color:#555;margin-top:8px;">✅ 在庫あり &nbsp;❌ 在庫なし &nbsp;⚠️ 未確認 — セルをタップで手動切り替え</div>
+      </div>
+
+      <!-- 在庫あり一覧 -->
+      <div class="fs">
+        <label>在庫あり バリアント一覧</label>
+        <div id="inStockSummary" style="background:#1a1a1a;border:1px solid #2e2e2e;border-radius:8px;padding:12px;min-height:44px;line-height:1.8;"></div>
+      </div>
+
+      <!-- 再出品 -->
+      <div class="fs">
+        <label>BUYMA 出品ID（停止中の商品）</label>
+        <input type="text" id="relistId" placeholder="例: 12345678" autocomplete="off">
+        <div style="font-size:11px;color:#555;margin-top:6px;">BUYMAの出品管理URLに含まれる数字（edit.aspx?AAID=<strong>XXXXXXXX</strong>）</div>
+      </div>
+      <button id="relistBtn" class="btn btn-p" onclick="doRelist()" style="width:100%;margin-bottom:10px;">▶ BUYMAで再出品する</button>
+      <button class="btn btn-s" onclick="resetStockCheck()" style="width:100%;">← 別の商品を確認する</button>
     </div>
   </div>
 </div>
@@ -1776,13 +1831,14 @@ let genDone=false;
 function tabGo(n){
   if(n===1) showScr('s1');
   if(n===3&&genDone) showScr('s3');
+  if(n===4) showScr('s4');
 }
 function goBack(){showScr('s1');}
 function cm(id){document.getElementById(id).classList.remove('open');}
 function showScr(id){
-  ['s1','s2','s3'].forEach(s=>document.getElementById(s).classList.remove('active'));
+  ['s1','s2','s3','s4'].forEach(s=>document.getElementById(s).classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs=['tab1','tab2','tab3'],cur=['s1','s2','s3'].indexOf(id);
+  const tabs=['tab1','tab2','tab3','tab4'],cur=['s1','s2','s3','s4'].indexOf(id);
   tabs.forEach((t,i)=>{
     const el=document.getElementById(t);
     el.classList.remove('active','done');
@@ -1812,6 +1868,203 @@ function resetForm(){
   addVariant();
   updateNameCount();
   calcProfit();
+}
+
+// ========== ④ 在庫確認・再出品 ==========
+let stockData = null;
+
+async function doCheckStock() {
+  const url = document.getElementById('checkUrl').value.trim();
+  if (!url) { alert('URLを入力してください。'); return; }
+  const st = document.getElementById('checkSt');
+  st.className = 'ust loading';
+  st.textContent = '⏳ 在庫確認中...';
+  document.getElementById('varStockWrap').style.display = 'none';
+  stockData = null;
+  try {
+    // Shopify .json を試みる
+    let jsonUrl = url.replace(/\?.*/, '').replace(/\/variants\/\d+/, '');
+    if (!jsonUrl.endsWith('.json')) jsonUrl += '.json';
+    let shopifyOk = false;
+    try {
+      const r = await fetch(jsonUrl);
+      if (r.ok) {
+        const j = await r.json();
+        if (j && j.product) { parseShopifyProduct(j.product, url); shopifyOk = true; }
+      }
+    } catch(e) {}
+    if (!shopifyOk) {
+      await checkStockClaude(url, st);
+    }
+    if (stockData) {
+      renderStockGrid();
+      document.getElementById('varStockWrap').style.display = 'block';
+      st.className = 'ust ok';
+      st.textContent = '✅ 確認完了！グリッドで在庫状況を確認・編集してください。';
+    } else {
+      st.className = 'ust err';
+      st.textContent = '❌ 在庫情報を取得できませんでした。URLを確認してください。';
+    }
+  } catch(e) {
+    st.className = 'ust err';
+    st.textContent = '❌ エラー: ' + e.message;
+  }
+}
+
+function parseShopifyProduct(product, url) {
+  const opts = product.options || [];
+  const colorIdx = opts.findIndex(o => /color|colour|カラー|色/i.test(o.name));
+  const sizeIdx = opts.findIndex(o => /size|サイズ/i.test(o.name));
+  const cIdx = colorIdx >= 0 ? colorIdx : 0;
+  const sIdx = sizeIdx >= 0 ? sizeIdx : (colorIdx === 0 ? 1 : 0);
+  const cKey = `option${cIdx+1}`, sKey = `option${sIdx+1}`;
+  const colors = (opts[cIdx]?.values || ['マルチ']);
+  const sizes = (opts[sIdx]?.values || ['FREE']);
+  const variants = (product.variants || []).map(v => ({
+    color: v[cKey] || colors[0] || '',
+    size: v[sKey] || sizes[0] || 'FREE',
+    available: !!v.available,
+    shopifyId: v.id
+  }));
+  stockData = { productName: product.title || '', colors, sizes, variants, productUrl: url };
+}
+
+async function checkStockClaude(url, st) {
+  const cak = localStorage.getItem('cak') || '';
+  if (!cak) {
+    st.className = 'ust err';
+    st.textContent = '⚠️ Claude APIキー未設定。設定タブで入力するか、Shopify対応ショップのURLを使用してください。';
+    return;
+  }
+  st.textContent = '⏳ Claudeでページを解析中...';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cak,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'web-fetch-2025-09-10,anthropic-dangerous-direct-browser-access:true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      tools: [{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 3 }],
+      messages: [{ role: 'user', content:
+        `このURL(${url})の商品ページを確認して、全カラー・全サイズの在庫状況をJSON形式のみで返してください。
+形式: {"product_name":"商品名","colors":["色1","色2"],"sizes":["XS","S","M"],"variants":[{"color":"色1","size":"XS","available":true},...]}`
+      }]
+    })
+  });
+  if (!res.ok) throw new Error('Claude API error: ' + res.status);
+  const data = await res.json();
+  const text = data.content?.find(c=>c.type==='text')?.text || '';
+  const match = text.match(/\{[\s\S]*"variants"[\s\S]*?\}/);
+  if (match) {
+    try {
+      const result = JSON.parse(match[0]);
+      stockData = {
+        productName: result.product_name || '',
+        colors: result.colors || [...new Set((result.variants||[]).map(v=>v.color))],
+        sizes: result.sizes || [...new Set((result.variants||[]).map(v=>v.size))],
+        variants: result.variants || [],
+        productUrl: url
+      };
+    } catch(e) {}
+  }
+}
+
+function renderStockGrid() {
+  if (!stockData) return;
+  const { colors, sizes, variants } = stockData;
+  const el = document.getElementById('varStockGrid');
+  let html = '<div class="vgrid"><table class="vgtable"><thead><tr><th>カラー \\ サイズ</th>';
+  sizes.forEach(s => html += `<th>${s}</th>`);
+  html += '</tr></thead><tbody>';
+  colors.forEach(color => {
+    html += `<tr><td style="text-align:left;font-weight:500;">${color}</td>`;
+    sizes.forEach(size => {
+      const v = variants.find(vt => vt.color === color && vt.size === size);
+      if (!v) { html += '<td class="vc-na">-</td>'; return; }
+      const st = v.available === true ? 'in' : v.available === false ? 'out' : 'uk';
+      const lb = st==='in' ? '✅ あり' : st==='out' ? '❌ なし' : '⚠️';
+      html += `<td class="vc-${st}" onclick="toggleStock(${JSON.stringify(color)},${JSON.stringify(size)})">${lb}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+  updateInStockSummary();
+}
+
+function toggleStock(color, size) {
+  if (!stockData) return;
+  const v = stockData.variants.find(vt => vt.color === color && vt.size === size);
+  if (!v) return;
+  v.available = v.available === true ? false : v.available === false ? null : true;
+  renderStockGrid();
+}
+
+function updateInStockSummary() {
+  if (!stockData) return;
+  const inStock = stockData.variants.filter(v => v.available === true);
+  const el = document.getElementById('inStockSummary');
+  if (!inStock.length) {
+    el.innerHTML = '<span style="color:#888;font-size:12px;">在庫ありのバリアントが選択されていません</span>';
+    return;
+  }
+  el.innerHTML = inStock.map(v =>
+    `<span class="instock-chip">${v.color} / ${v.size}</span>`
+  ).join('');
+}
+
+async function doRelist() {
+  const id = document.getElementById('relistId').value.trim();
+  if (!id) {
+    if (confirm('出品IDが未入力です。\nBUYMA出品管理ページを開いて手動で再出品しますか？')) {
+      window.open('https://www.buyma.com/buyer/goods/index.aspx', '_blank');
+    }
+    return;
+  }
+  const token = localStorage.getItem('bmt') || '';
+  if (!token) { alert('BUYMAトークンを設定してください。'); return; }
+  const btn = document.getElementById('relistBtn');
+  btn.textContent = '⏳ 送信中...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Buyma-Token': token },
+      body: JSON.stringify({
+        _method: 'PATCH',
+        _path: `/personal/buyers/me/exhibitions/${id}`,
+        _data: { product: { control: 'publish' } }
+      })
+    });
+    const text = await res.text();
+    if (res.status === 200 || res.status === 204 || res.status === 202) {
+      alert('✅ 再出品リクエストを送信しました！BUYMA管理画面で反映を確認してください。');
+      resetStockCheck();
+    } else {
+      if (confirm(`Workerが再出品APIに未対応のようです (${res.status})。\nBUYMA管理画面を開いて手動で再出品しますか？`)) {
+        window.open(`https://www.buyma.com/buyer/goods/edit.aspx?AAID=${id}`, '_blank');
+      }
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+  }
+  btn.textContent = '▶ BUYMAで再出品する';
+  btn.disabled = false;
+}
+
+function resetStockCheck() {
+  stockData = null;
+  document.getElementById('checkUrl').value = '';
+  document.getElementById('relistId').value = '';
+  document.getElementById('checkSt').className = 'ust';
+  document.getElementById('checkSt').textContent = '';
+  document.getElementById('varStockWrap').style.display = 'none';
+  document.getElementById('varStockGrid').innerHTML = '';
+  document.getElementById('inStockSummary').innerHTML = '';
 }
 </script>
 </body>
