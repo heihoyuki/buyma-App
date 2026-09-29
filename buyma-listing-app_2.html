@@ -1069,7 +1069,7 @@ function addVariant(){
       </div>
       <div>
         <div style="font-size:12px;color:#888;margin-bottom:5px;">カラー系統</div>
-        <select class="colorsel" onchange="var t=this.closest('.varrow').querySelector('.colortxt');t.value=this.options[this.selectedIndex].text.split(' ').slice(1).join(' ');" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
+        <select class="colorsel" onchange="var t=this.closest('.varrow').querySelector('.colortxt');t.value=this.options[this.selectedIndex].text.split(' ').slice(1).join(' ');checkColorTxtLen(t);" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
           <option value="1">⬜ ホワイト</option>
           <option value="2">⬛ ブラック</option>
           <option value="3">🔲 グレー</option>
@@ -1088,7 +1088,8 @@ function addVariant(){
           <option value="16">🔵 ネイビー</option>
           <option value="99" selected>🎨 マルチカラー</option>
         </select>
-        <input type="text" class="colortxt" placeholder="色名（任意・例：オフホワイト）" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;">
+        <input type="text" class="colortxt" placeholder="色名（例：オフホワイト / Off White）" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;" oninput="checkColorTxtLen(this)">
+        <div class="colortxt-cnt" style="font-size:11px;color:#555;text-align:right;margin-top:3px;font-family:monospace;">0/26</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -1107,10 +1108,29 @@ function addVariant(){
   // ドロップダウンの初期値をテキスト欄に自動入力
   const initSel=div.querySelector('.colorsel');
   const initTxt=div.querySelector('.colortxt');
-  if(initSel&&initTxt) initTxt.value=initSel.options[initSel.selectedIndex].text.split(' ').slice(1).join(' ');
+  if(initSel&&initTxt){initTxt.value=initSel.options[initSel.selectedIndex].text.split(' ').slice(1).join(' ');checkColorTxtLen(initTxt);}
 }
 function updateVarType(id, type){
   // 将来的な処理用
+}
+function calcHalfWidth(str){
+  return [...str].reduce((n,c)=>n+(c.match(/[^\x00-\xFF]/)?2:1),0);
+}
+function checkColorTxtLen(el){
+  let val=el.value;
+  let w=calcHalfWidth(val);
+  // 26半角（全角13）を超えたら末尾から削る
+  if(w>26){
+    while(calcHalfWidth(val)>26&&val.length>0) val=val.slice(0,-1);
+    el.value=val;
+    w=calcHalfWidth(val);
+  }
+  const cnt=el.nextElementSibling;
+  if(!cnt||!cnt.classList.contains('colortxt-cnt')) return;
+  const full=Math.ceil(w/2), remain=26-w;
+  cnt.textContent=`${w}/26（全角${full}字 / あと半角${remain}字）`;
+  cnt.style.color=w>=26?'#f06060':w>=22?'#f0a060':'#555';
+  el.style.borderColor=w>=26?'#f06060':'';
 }
 function delVariant(id){
   const el=document.getElementById(id);
@@ -1352,7 +1372,7 @@ async function doFetchMultiColor(){
       const sizeIn=row.querySelector('input[type=text]:not(.colortxt)');
       if(sizeIn) sizeIn.value='one size';
       if(colorSel){colorSel.value=masterId;}
-      if(colorTxt){const n=color.charAt(0).toUpperCase()+color.slice(1);colorTxt.value=n;}
+      if(colorTxt){const n=color.charAt(0).toUpperCase()+color.slice(1);colorTxt.value=n;checkColorTxtLen(colorTxt);}
     });
   }
   updateNameCount();
