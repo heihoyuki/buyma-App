@@ -409,6 +409,18 @@ textarea{resize:vertical;line-height:1.6;}
       <input type="number" id="price" placeholder="例：25000（または↑ボタンで自動計算）" oninput="calcProfit()">
     </div>
 
+    <!-- 参考価格（任意） -->
+    <div class="fs">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="checkbox" id="refPriceOn" style="width:18px;height:18px;accent-color:#c8f060;flex-shrink:0;" onchange="document.getElementById('refPriceWrap').style.display=this.checked?'block':'none'">
+        <label for="refPriceOn" style="font-size:13px;cursor:pointer;color:#ccc;">参考価格を設定する（任意）</label>
+      </div>
+      <div id="refPriceWrap" style="display:none;">
+        <input type="number" id="refPrice" placeholder="例：120000（円）" min="0">
+        <div style="font-size:11px;color:#888;margin-top:5px;">参考価格は出品価格より高い金額を設定してください</div>
+      </div>
+    </div>
+
     <!-- 配送タグ -->
     <div class="fs">
       <label>配送オプション・タグ</label>
@@ -1818,7 +1830,8 @@ async function submitBuyma(){
       ...(orderQty!==undefined?{order_quantity:orderQty}:{}),
       ...(buyerNotes?{buyer_notes:buyerNotes}:{}),
       ...(srcUrl?{shop_urls:[{label:'買い付け先',url:srcUrl,description:''}]}:{}),
-      ...(document.getElementById('rlinks').value.trim()?{colorsize_comments:document.getElementById('rlinks').value.trim()}:{})
+      ...(document.getElementById('rlinks').value.trim()?{colorsize_comments:document.getElementById('rlinks').value.trim()}:{}),
+      ...(document.getElementById('refPriceOn').checked&&document.getElementById('refPrice').value?{retail_price:parseInt(document.getElementById('refPrice').value)}:{})
     }};
     const res=await fetch('https://old-wood-7e86.kiyumigakasa.workers.dev',{
       method:'POST',
@@ -1881,7 +1894,9 @@ function resetForm(){
   document.getElementById('selbrandtag').innerHTML='';
   document.getElementById('pgrid').innerHTML='';
   document.getElementById('pcount').style.display='none';
-  ['pname','price','costPrice','domShip','targetProfit','memo','pasteText','srcUrl','fetchUrl'].forEach(id=>document.getElementById(id).value='');
+  ['pname','price','costPrice','domShip','targetProfit','memo','pasteText','srcUrl','fetchUrl','refPrice'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('refPriceOn').checked=false;
+  document.getElementById('refPriceWrap').style.display='none';
   document.getElementById('fxRate').value='115';
   document.getElementById('intlShip').value='25';
   document.getElementById('varList').innerHTML='';
