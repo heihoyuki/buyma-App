@@ -526,8 +526,9 @@ textarea{resize:vertical;line-height:1.6;}
     </div>
     <div class="actrow">
       <button class="btn btn-s" onclick="goBack()">← 修正する</button>
-      <button class="btn btn-p" onclick="submitBuyma()">BUYMAで出品する →</button>
+      <button class="btn btn-p" onclick="submitBuyma('publish')">BUYMAで出品する →</button>
     </div>
+    <button class="btn btn-s" onclick="submitBuyma('draft')" style="width:100%;margin-top:8px;border-color:#60d4f0;color:#60d4f0;">📝 下書きとして保存</button>
   </div>
 
   <!-- SCREEN 4: 在庫確認・再出品 -->
@@ -585,10 +586,24 @@ textarea{resize:vertical;line-height:1.6;}
 
 <div class="moverlay" id="mOK">
   <div class="modal">
-    <h3>🎉 出品完了！</h3>
+    <h3 id="okTitle">🎉 出品完了！</h3>
     <p id="oktext"></p>
     <div class="mbtns">
       <button class="btn btn-p" onclick="cm('mOK');resetForm()">次の商品を出品</button>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="mErr">
+  <div class="modal">
+    <h3>❌ 出品エラー</h3>
+    <p id="errSummary" style="color:#f06060;font-size:13px;margin-bottom:10px;"></p>
+    <div style="background:#0f0f0f;border-radius:6px;padding:10px;margin-bottom:14px;max-height:140px;overflow-y:auto;">
+      <pre id="errDetail" style="font-size:11px;color:#888;white-space:pre-wrap;word-break:break-all;line-height:1.6;margin:0;"></pre>
+    </div>
+    <div class="mbtns">
+      <button class="btn btn-s" onclick="cm('mErr')">閉じる</button>
+      <button class="btn btn-s" id="errDraftBtn" onclick="cm('mErr');submitBuyma('draft')" style="border-color:#60d4f0;color:#60d4f0;">📝 下書きで再試行</button>
     </div>
   </div>
 </div>
@@ -1694,7 +1709,7 @@ function toSquareB64(src,wmStr='',brandStr='',shortStr=''){return new Promise(re
   });}
 
 // BUYMA出品
-async function submitBuyma(){
+async function submitBuyma(mode='publish'){
   const token=document.getElementById('buymaToken').value.trim();
   if(!token){document.getElementById('mInfo').classList.add('open');return;}
 
@@ -1813,7 +1828,7 @@ async function submitBuyma(){
     if(_sell&&_costNum) buyerNoteLines.push('【予想利益】¥'+Math.round(_profitVal).toLocaleString()+'（利益率'+(_sell>0?Math.round(_profitVal/_sell*100):0)+'%）');
     const buyerNotes=buyerNoteLines.join('\n');
     const payload={product:{
-      control:'publish',
+      control:mode,
       reference_number:refNum,
       name,
       comments:comment,
@@ -1841,15 +1856,35 @@ async function submitBuyma(){
     cm('mInfo');
     const rawText=await res.text();
     let d;try{d=JSON.parse(rawText);}catch(e){d=null;}
-    if(res.status===201||res.status===202){
+    if(res.status===201||res.status===202||res.status===200){
       let listingId='';try{const rd=JSON.parse(rawText);listingId=rd.data&&rd.data.id?String(rd.data.id):(rd.id?String(rd.id):'');}catch(e){}
-    const statusMsg=res.status===201?'✅ 出品が作成されました（ID: '+(listingId||'不明')+'）':'⏳ 出品リクエスト受付済み';
-    document.getElementById('oktext').textContent=`${statusMsg}\n\nBUYMA出品管理で反映を確認してください。\nステータス: ${res.status}\n\n--- 詳細 ---\n${rawText.substring(0,500)}`;
+      const isDraft=mode==='draft';
+      document.getElementById('okTitle').textContent=isDraft?'📝 下書き保存完了！':'🎉 出品完了！';
+      const statusMsg=isDraft?'下書きとして保存されました（ID: '+(listingId||'不明')+'）':(res.status===201?'出品が作成されました（ID: '+(listingId||'不明')+'）':'出品リクエスト受付済み');
+      document.getElementById('oktext').textContent=`${statusMsg}\n\nBUYMA出品管理で確認してください。\nステータス: ${res.status}`;
       document.getElementById('mOK').classList.add('open');
     }else{
-      alert(`出品エラー (${res.status}):\n${rawText}`);
+      // エラーの詳細を解析
+      let summary=`ステータス: ${res.status}`;
+      let detail=rawText;
+      try{
+        const ed=JSON.parse(rawText);
+        const msg=ed.message||ed.error||ed.errors?.(Array.isArray(ed.errors)?ed.errors.join(', '):ed.errors):'';
+        if(msg) summary+=`\n原因: ${msg}`;
+        detail=JSON.stringify(ed,null,2);
+      }catch(e){}
+      document.getElementById('errSummary').textContent=summary;
+      document.getElementById('errDetail').textContent=detail.substring(0,600);
+      // 既に下書き試行中なら下書きボタンを非表示
+      document.getElementById('errDraftBtn').style.display=mode==='draft'?'none':'';
+      document.getElementById('mErr').classList.add('open');
     }
-  }catch(e){cm('mInfo');alert('通信エラー: '+e.message);}
+  }catch(e){cm('mInfo');
+    document.getElementById('errSummary').textContent='通信エラー: '+e.message;
+    document.getElementById('errDetail').textContent='ネットワーク接続またはWorkerの問題の可能性があります。';
+    document.getElementById('errDraftBtn').style.display='none';
+    document.getElementById('mErr').classList.add('open');
+  }
 }
 
 // ユーティリティ
