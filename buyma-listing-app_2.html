@@ -883,7 +883,7 @@ async function editSingleImage(dataUrl,opts){
         });
       }
       if(opts.wm){
-        ctx.save(); ctx.globalAlpha=0.20; ctx.fillStyle='#111111';
+        ctx.save(); ctx.globalAlpha=0.10; ctx.fillStyle='#111111';
         const fs=Math.max(14,Math.floor(full*0.038));
         ctx.font=`bold ${fs}px Arial`;
         ctx.translate(full/2,full/2); ctx.rotate(-Math.PI/4);
@@ -1669,7 +1669,7 @@ function toSquareB64(src,wmStr='',brandStr='',shortStr=''){return new Promise(re
       ctx.drawImage(img,(sz-img.width)/2,(sz-img.height)/2);
       if(wmStr){
         ctx.save();
-        ctx.globalAlpha=0.20;
+        ctx.globalAlpha=0.10;
         ctx.fillStyle='#111111';
         const fs=Math.max(14,Math.floor(sz*0.038));
         ctx.font=`bold ${fs}px Arial`;
@@ -1869,7 +1869,7 @@ async function submitBuyma(mode='publish'){
       let detail=rawText;
       try{
         const ed=JSON.parse(rawText);
-        const msg=ed.message||ed.error||ed.errors?.(Array.isArray(ed.errors)?ed.errors.join(', '):ed.errors):'';
+        const msg=ed.message||ed.error||(Array.isArray(ed.errors)?ed.errors.join(', '):(ed.errors?String(ed.errors):''));
         if(msg) summary+=`\n原因: ${msg}`;
         detail=JSON.stringify(ed,null,2);
       }catch(e){}
