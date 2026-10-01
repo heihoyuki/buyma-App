@@ -1213,12 +1213,13 @@ function vcAutoFillName(sel){
   }
 }
 
-function vcAddSize(){
+function vcAddSize(initialVal){
   const sid='vs'+vcSizeId++;
   const isFirst=document.querySelectorAll('#vcSizeList .vcSizeRow').length===0;
+  const defVal=initialVal!==undefined?initialVal:(isFirst?'FREE':'');
   const list=document.getElementById('vcSizeList');
   const html=`<div class="vcSizeRow" data-sid="${sid}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-    <input type="text" value="${isFirst?'FREE':''}" placeholder="例：FREE / S / M / XL / 38"
+    <input type="text" value="${escHtml(defVal)}" placeholder="例：FREE / S / M / XL / 38"
       style="flex:1;padding:10px 12px;font-size:15px;"
       oninput="vcRenderMatrix()">
     <button onclick="vcRemoveSize('${sid}')" style="width:28px;height:28px;background:#242424;border:1px solid #3e3e3e;border-radius:6px;color:#888;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
@@ -1447,6 +1448,30 @@ function toggleColorUrls(){
   btn.style.color=show?'#000':'#c8f060';
 }
 
+// カラー名 → BUYMAマスターID（共有）
+const COLOR_MAP={'white':1,'ホワイト':1,'black':2,'ブラック':2,'gray':3,'grey':3,'グレー':3,'brown':4,'ブラウン':4,'cocoa':4,'tan':4,'beige':5,'ベージュ':5,'oat':5,'cream':5,'ivory':5,'sand':5,'green':6,'グリーン':6,'olive':6,'khaki':6,'blue':7,'ブルー':7,'navy':16,'ネイビー':16,'purple':8,'パープル':8,'lavender':8,'yellow':9,'イエロー':9,'mustard':9,'pink':10,'ピンク':10,'blush':10,'rose':10,'mauve':10,'red':11,'レッド':11,'rouge':11,'burgundy':11,'orange':12,'オレンジ':12,'rust':12,'silver':13,'シルバー':13,'gold':14,'ゴールド':14,'brass':14,'clear':15,'クリア':15,'multi':99,'マルチ':99};
+function getColorMasterId(n){if(!n)return 99;const lc=n.toLowerCase().trim();if(COLOR_MAP[lc])return COLOR_MAP[lc];for(const[k,id]of Object.entries(COLOR_MAP)){if(lc.includes(k)||k.includes(lc))return id;}return 99;}
+
+// カラーをvcColorListに一括セット
+function vcSetColors(colorItems){
+  // colorItems: [{name, masterId?}]
+  document.getElementById('vcColorList').innerHTML='';
+  vcColorId=0;
+  colorItems.forEach(({name,masterId})=>{
+    const vid='vc'+vcColorId++;
+    const list=document.getElementById('vcColorList');
+    list.insertAdjacentHTML('beforeend',vcColorRowHtml(vid));
+    const row=list.querySelector(`[data-vid="${vid}"]`);
+    const sel=row.querySelector('.colorsel');
+    const txt=row.querySelector('.colortxt');
+    const mid=masterId||getColorMasterId(name);
+    if(sel) sel.value=mid;
+    if(txt){const n=name.charAt(0).toUpperCase()+name.slice(1);txt.value=n;checkColorTxtLen(txt);}
+  });
+  if(!document.querySelectorAll('#vcColorList .vcColorRow').length) vcAddColor();
+  vcRenderMatrix();
+}
+
 async function doFetchMultiColor(){
   const mainUrl=document.getElementById('fetchUrl').value.trim();
   const colorRaw=document.getElementById('colorUrls').value.trim();
@@ -1479,8 +1504,7 @@ async function doFetchMultiColor(){
     }finally{clearTimeout(timer);}
   };
   const normImg=u=>u.replace(/&amp;/g,'&').replace(/([?&]sw=)\d+/i,'$11200');
-  const CM={'white':1,'ホワイト':1,'black':2,'ブラック':2,'gray':3,'grey':3,'グレー':3,'brown':4,'ブラウン':4,'cocoa':4,'tan':4,'beige':5,'ベージュ':5,'oat':5,'cream':5,'ivory':5,'sand':5,'green':6,'グリーン':6,'olive':6,'blue':7,'ブルー':7,'navy':16,'ネイビー':16,'purple':8,'パープル':8,'lavender':8,'yellow':9,'イエロー':9,'mustard':9,'pink':10,'ピンク':10,'blush':10,'rose':10,'mauve':10,'red':11,'レッド':11,'rouge':11,'burgundy':11,'orange':12,'オレンジ':12,'rust':12,'silver':13,'シルバー':13,'gold':14,'ゴールド':14,'brass':14,'clear':15,'クリア':15,'multi':99,'その他':99};
-  function getColorId(n){if(!n)return 99;const lc=n.toLowerCase().trim();if(CM[lc])return CM[lc];for(const[k,id]of Object.entries(CM)){if(lc.includes(k)||k.includes(lc))return id;}return 99;}
+  const getColorId=getColorMasterId; // 共有関数を使用
   const allImages=[],colorData=[];
   let mainInfo=null;
   for(let i=0;i<urls.length;i++){
@@ -1526,20 +1550,9 @@ async function doFetchMultiColor(){
   }
   if(combinedImages.length) document.getElementById('listingImgUrls').value=combinedImages.join('\n');
   document.getElementById('srcUrl').value=urls[0]||'';
-  // バリエーションを自動入力
+  // カラーを新UIに反映
   if(colorData.length>0){
-    document.querySelectorAll('.varrow').forEach(r=>r.remove());
-    colorData.forEach(({color,masterId})=>{
-      addVariant();
-      const rows=document.querySelectorAll('.varrow');
-      const row=rows[rows.length-1];
-      const colorSel=row.querySelector('.colorsel');
-      const colorTxt=row.querySelector('.colortxt');
-      const sizeIn=row.querySelector('input[type=text]:not(.colortxt)');
-      if(sizeIn) sizeIn.value='one size';
-      if(colorSel){colorSel.value=masterId;}
-      if(colorTxt){const n=color.charAt(0).toUpperCase()+color.slice(1);colorTxt.value=n;checkColorTxtLen(colorTxt);}
-    });
+    vcSetColors(colorData.map(({color,masterId})=>({name:color,masterId})));
   }
   updateNameCount();
   const ok=colorData.filter(c=>c.images.length>0).length;
@@ -1607,7 +1620,9 @@ async function doFetchUrl(){
 ・background-image の url() の中のURL
 ・.jpg .jpeg .png .webp を含むすべてのURL（小さいサムネイルより大きい画像を優先）
 
-{"image_urls":["https://...","https://..."],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明","details":"詳細・サイズ・素材","material":"素材","color":"カラー"}`,
+{"image_urls":["https://..."],"product_name":"商品名","brand":"ブランド名","price_aud":数値orNull,"description":"説明","details":"詳細・サイズ・素材","material":"素材","color":"主カラー名（英語）","colors":["Black","White"],"sizes":["S","M","L","XL"]}
+
+sizesはShopify JSONならproduct.options[name=Size].values、ページならサイズ表記から全取得。なければ["FREE"]。`,
     7000);
     const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const botSigns=['Cloudflare','Just a moment','cf-ray','DDoS protection','Checking your browser','Access Denied','Please enable Cookies','Ray ID','cf_chl'];
@@ -1646,6 +1661,17 @@ async function doFetchUrl(){
     if(extra&&!document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
     if(p.image_urls&&p.image_urls.length>0) document.getElementById('listingImgUrls').value=p.image_urls.join('\n');
     document.getElementById('srcUrl').value=url;
+    // サイズ自動入力
+    const autoSizes=Array.isArray(p.sizes)&&p.sizes.length?p.sizes.filter(s=>s&&String(s).trim()):null;
+    if(autoSizes){
+      document.getElementById('vcSizeList').innerHTML='';
+      vcSizeId=0;
+      autoSizes.forEach(s=>vcAddSize(String(s).trim()));
+      vcRenderMatrix();
+    }
+    // カラー自動入力（複数の場合）
+    const autoColors=Array.isArray(p.colors)&&p.colors.length>1?p.colors.filter(c=>c&&String(c).trim()):null;
+    if(autoColors) vcSetColors(autoColors.map(c=>({name:String(c).trim()})));
     updateNameCount();
     if(p.image_urls&&p.image_urls.length>0){
       st.className='ust ok';
