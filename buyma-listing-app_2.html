@@ -301,15 +301,14 @@ textarea{resize:vertical;line-height:1.6;}
 
     <!-- バリエーション -->
     <div class="fs">
-      <label>バリエーション（サイズ・カラー・在庫）</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto 36px;gap:8px;margin-bottom:6px;">
-        <div style="font-size:11px;color:#555;padding:0 2px;">サイズ</div>
-        <div style="font-size:11px;color:#555;padding:0 2px;">カラー</div>
-        <div style="font-size:11px;color:#555;padding:0 2px;">在庫タイプ・数量</div>
-        <div></div>
-      </div>
-      <div id="varList"></div>
-      <div class="addbtn" onclick="addVariant()">＋ バリエーションを追加</div>
+      <label>バリエーション（カラー・サイズ・在庫）</label>
+      <div style="font-size:12px;color:#888;margin-bottom:8px;font-weight:500;">カラー</div>
+      <div id="vcColorList" style="margin-bottom:4px;"></div>
+      <div class="addbtn" style="margin-bottom:16px;" onclick="vcAddColor()">＋ カラーを追加</div>
+      <div style="font-size:12px;color:#888;margin-bottom:8px;font-weight:500;">サイズ</div>
+      <div id="vcSizeList" style="margin-bottom:4px;"></div>
+      <div class="addbtn" style="margin-bottom:8px;" onclick="vcAddSize()">＋ サイズを追加</div>
+      <div id="vcMatrix"></div>
     </div>
 
     <!-- 買い付け国・発送地 -->
@@ -752,8 +751,8 @@ window.addEventListener('load',()=>{
   });
 
 
-  // バリエーション初期1行
-  addVariant();
+  // バリエーション初期化
+  vcInit();
 
   // 写真アップ
   const box=document.getElementById('upbox');
@@ -1136,74 +1135,159 @@ function setCatSub(v){
 
 // バリエーション
 let varId=0;
-function addVariant(){
-  const id='v'+varId++;
-  const div=document.createElement('div');
-  div.className='varrow'; div.id=id;
-  div.style.cssText='margin-bottom:12px;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;padding:14px;';
-  div.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <span style="font-size:12px;color:#888;font-weight:500;">バリエーション</span>
-      <button class="delbtn" onclick="delVariant('${id}')" style="width:28px;height:28px;">×</button>
+// ── バリエーション：カラー×サイズ マトリックスUI ─────────────────
+const COLOR_NAMES={1:'ホワイト',2:'ブラック',3:'グレー',4:'ブラウン',5:'ベージュ',6:'グリーン',7:'ブルー',8:'パープル',9:'イエロー',10:'ピンク',11:'レッド',12:'オレンジ',13:'シルバー',14:'ゴールド',15:'クリア',16:'ネイビー',99:'マルチカラー'};
+let vcColorId=0, vcSizeId=0;
+const vcStockState={};
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function vcColorRowHtml(vid){
+  return `<div class="vcColorRow" data-vid="${vid}" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">
+    <div style="flex:1;">
+      <select class="colorsel" style="width:100%;padding:10px 12px;font-size:14px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;margin-bottom:6px;-webkit-appearance:none;appearance:none;"
+        onchange="vcAutoFillName(this);vcRenderMatrix()">
+        <option value="1">⬜ ホワイト</option>
+        <option value="2">⬛ ブラック</option>
+        <option value="3">🔲 グレー</option>
+        <option value="4">🟫 ブラウン</option>
+        <option value="5">🟤 ベージュ</option>
+        <option value="6">💚 グリーン</option>
+        <option value="7">💙 ブルー</option>
+        <option value="8">💜 パープル</option>
+        <option value="9">💛 イエロー</option>
+        <option value="10">🩷 ピンク</option>
+        <option value="11">❤️ レッド</option>
+        <option value="12">🟠 オレンジ</option>
+        <option value="13">🩶 シルバー</option>
+        <option value="14">🌟 ゴールド</option>
+        <option value="15">🫧 クリア</option>
+        <option value="16">🔵 ネイビー</option>
+        <option value="99" selected>🎨 マルチカラー</option>
+      </select>
+      <input type="text" class="colortxt" placeholder="色名（例：オフホワイト / Off White）"
+        style="width:100%;padding:10px 12px;font-size:15px;"
+        oninput="checkColorTxtLen(this);vcRenderMatrix()">
+      <div class="colortxt-cnt" style="font-size:11px;color:#555;text-align:right;margin-top:3px;font-family:monospace;">0/26</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div>
-        <div style="font-size:12px;color:#888;margin-bottom:5px;">サイズ</div>
-        <input type="text" value="one size" placeholder="例：FREE / S / M" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;">
-      </div>
-      <div>
-        <div style="font-size:12px;color:#888;margin-bottom:5px;">カラー系統</div>
-        <select class="colorsel" onchange="var t=this.closest('.varrow').querySelector('.colortxt');t.value=this.options[this.selectedIndex].text.split(' ').slice(1).join(' ');checkColorTxtLen(t);" style="padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box;margin-bottom:6px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;">
-          <option value="1">⬜ ホワイト</option>
-          <option value="2">⬛ ブラック</option>
-          <option value="3">🔲 グレー</option>
-          <option value="4">🟫 ブラウン</option>
-          <option value="5">🟤 ベージュ</option>
-          <option value="6">💚 グリーン</option>
-          <option value="7">💙 ブルー</option>
-          <option value="8">💜 パープル</option>
-          <option value="9">💛 イエロー</option>
-          <option value="10">🩷 ピンク</option>
-          <option value="11">❤️ レッド</option>
-          <option value="12">🟠 オレンジ</option>
-          <option value="13">🩶 シルバー</option>
-          <option value="14">🌟 ゴールド</option>
-          <option value="15">🫧 クリア</option>
-          <option value="16">🔵 ネイビー</option>
-          <option value="99" selected>🎨 マルチカラー</option>
-        </select>
-        <input type="text" class="colortxt" placeholder="色名（例：オフホワイト / Off White）" style="padding:10px 12px;font-size:15px;width:100%;box-sizing:border-box;" oninput="checkColorTxtLen(this)">
-        <div class="colortxt-cnt" style="font-size:11px;color:#555;text-align:right;margin-top:3px;font-family:monospace;">0/26</div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:6px;font-size:15px;color:#ccc;cursor:pointer;">
-        <input type="radio" name="vtype_${id}" value="order" checked onchange="updateVarType('${id}',this.value)" style="width:auto;accent-color:#c8f060;"> 買い付け可能数
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:15px;color:#ccc;cursor:pointer;">
-        <input type="radio" name="vtype_${id}" value="stock" onchange="updateVarType('${id}',this.value)" style="width:auto;accent-color:#c8f060;"> 手元在庫
-      </label>
-      <div>
-        <div style="font-size:12px;color:#888;margin-bottom:4px;">数量</div>
-        <input type="number" id="vqty_${id}" min="0" value="100" style="width:80px;padding:8px 10px;font-size:15px;text-align:center;">
-      </div>
-    </div>`;
-  document.getElementById('varList').appendChild(div);
-  // ドロップダウンの初期値をテキスト欄に自動入力
-  const initSel=div.querySelector('.colorsel');
-  const initTxt=div.querySelector('.colortxt');
-  if(initSel&&initTxt){initTxt.value=initSel.options[initSel.selectedIndex].text.split(' ').slice(1).join(' ');checkColorTxtLen(initTxt);}
+    <button onclick="vcRemoveColor('${vid}')" style="margin-top:2px;width:28px;height:28px;background:#242424;border:1px solid #3e3e3e;border-radius:6px;color:#888;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
+  </div>`;
 }
-function updateVarType(id, type){
-  // 将来的な処理用
+
+function vcInit(){
+  vcColorId=0; vcSizeId=0;
+  Object.keys(vcStockState).forEach(k=>delete vcStockState[k]);
+  document.getElementById('vcColorList').innerHTML='';
+  document.getElementById('vcSizeList').innerHTML='';
+  document.getElementById('vcMatrix').innerHTML='';
+  vcAddColor();
+  vcAddSize();
 }
+
+function vcAddColor(){
+  const vid='vc'+vcColorId++;
+  const list=document.getElementById('vcColorList');
+  list.insertAdjacentHTML('beforeend', vcColorRowHtml(vid));
+  const row=list.querySelector(`[data-vid="${vid}"]`);
+  const sel=row.querySelector('.colorsel');
+  const txt=row.querySelector('.colortxt');
+  if(sel&&txt){txt.value=COLOR_NAMES[parseInt(sel.value)]||'マルチカラー';checkColorTxtLen(txt);}
+  vcRenderMatrix();
+}
+
+function vcRemoveColor(vid){
+  if(document.querySelectorAll('#vcColorList .vcColorRow').length<=1) return;
+  const row=document.querySelector(`#vcColorList .vcColorRow[data-vid="${vid}"]`);
+  if(row) row.remove();
+  vcRenderMatrix();
+}
+
+function vcAutoFillName(sel){
+  const row=sel.closest('.vcColorRow');
+  const txt=row&&row.querySelector('.colortxt');
+  if(!txt) return;
+  const knownNames=new Set(Object.values(COLOR_NAMES));
+  if(!txt.value.trim()||knownNames.has(txt.value.trim())){
+    txt.value=COLOR_NAMES[parseInt(sel.value)]||'マルチカラー';
+    checkColorTxtLen(txt);
+  }
+}
+
+function vcAddSize(){
+  const sid='vs'+vcSizeId++;
+  const isFirst=document.querySelectorAll('#vcSizeList .vcSizeRow').length===0;
+  const list=document.getElementById('vcSizeList');
+  const html=`<div class="vcSizeRow" data-sid="${sid}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+    <input type="text" value="${isFirst?'FREE':''}" placeholder="例：FREE / S / M / XL / 38"
+      style="flex:1;padding:10px 12px;font-size:15px;"
+      oninput="vcRenderMatrix()">
+    <button onclick="vcRemoveSize('${sid}')" style="width:28px;height:28px;background:#242424;border:1px solid #3e3e3e;border-radius:6px;color:#888;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
+  </div>`;
+  list.insertAdjacentHTML('beforeend', html);
+  vcRenderMatrix();
+}
+
+function vcRemoveSize(sid){
+  if(document.querySelectorAll('#vcSizeList .vcSizeRow').length<=1) return;
+  const row=document.querySelector(`#vcSizeList .vcSizeRow[data-sid="${sid}"]`);
+  if(row) row.remove();
+  vcRenderMatrix();
+}
+
+function vcRenderMatrix(){
+  const wrap=document.getElementById('vcMatrix');
+  if(!wrap) return;
+  const colors=Array.from(document.querySelectorAll('#vcColorList .vcColorRow')).map(r=>({
+    vid:r.dataset.vid,
+    masterColor:parseInt(r.querySelector('.colorsel')?.value)||99,
+    name:(r.querySelector('.colortxt')?.value?.trim())||'カラー'
+  }));
+  const sizes=Array.from(document.querySelectorAll('#vcSizeList .vcSizeRow')).map(r=>({
+    sid:r.dataset.sid,
+    label:(r.querySelector('input')?.value?.trim())||'FREE'
+  }));
+  if(!colors.length||!sizes.length){wrap.innerHTML='';return;}
+  // 現在のselect値を保存
+  wrap.querySelectorAll('.vcStockSel').forEach(sel=>{if(sel.dataset.key)vcStockState[sel.dataset.key]=sel.value;});
+  const stockOpts=[{v:'order',l:'在庫あり',c:'#c8f060'},{v:'nostock',l:'在庫なし',c:'#666'},{v:'stock',l:'手元にあり',c:'#60d4f0'}];
+  let html='<div style="font-size:12px;color:#888;margin-bottom:8px;font-weight:500;margin-top:4px;">在庫設定</div>';
+  html+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html+='<tr><th style="padding:6px 8px;border-bottom:1px solid #2e2e2e;min-width:80px;"></th>';
+  sizes.forEach(s=>{
+    html+=`<th style="padding:6px 8px;text-align:center;color:#888;font-weight:500;min-width:100px;border-bottom:1px solid #2e2e2e;">${escHtml(s.label||'（未入力）')}</th>`;
+  });
+  html+='</tr>';
+  colors.forEach(c=>{
+    html+=`<tr><td style="padding:6px 8px;color:#ccc;font-size:12px;border-bottom:1px solid #1e1e1e;white-space:nowrap;">${escHtml(c.name)}</td>`;
+    sizes.forEach(s=>{
+      const key=c.vid+'_'+s.sid;
+      const val=vcStockState[key]||'order';
+      const col=stockOpts.find(o=>o.v===val)?.c||'#c8f060';
+      const opts=stockOpts.map(o=>`<option value="${o.v}"${val===o.v?' selected':''}>${o.l}</option>`).join('');
+      html+=`<td style="padding:4px 6px;border-bottom:1px solid #1e1e1e;">
+        <select class="vcStockSel" data-key="${key}"
+          style="width:100%;padding:6px 4px;font-size:12px;background:#111;border:1px solid ${col};border-radius:6px;color:${col};-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;"
+          onchange="vcStockState[this.dataset.key]=this.value;vcUpdSel(this)">${opts}</select>
+      </td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</table></div>';
+  wrap.innerHTML=html;
+}
+
+function vcUpdSel(sel){
+  const o=[{v:'order',c:'#c8f060'},{v:'nostock',c:'#666'},{v:'stock',c:'#60d4f0'}];
+  const col=o.find(x=>x.v===sel.value)?.c||'#c8f060';
+  sel.style.borderColor=col; sel.style.color=col;
+}
+
 function calcHalfWidth(str){
   return [...str].reduce((n,c)=>n+(c.match(/[^\x00-\xFF]/)?2:1),0);
 }
 function checkColorTxtLen(el){
   let val=el.value;
   let w=calcHalfWidth(val);
-  // 26半角（全角13）を超えたら末尾から削る
   if(w>26){
     while(calcHalfWidth(val)>26&&val.length>0) val=val.slice(0,-1);
     el.value=val;
@@ -1216,30 +1300,28 @@ function checkColorTxtLen(el){
   cnt.style.color=w>=26?'#f06060':w>=22?'#f0a060':'#555';
   el.style.borderColor=w>=26?'#f06060':'';
 }
-function delVariant(id){
-  const el=document.getElementById(id);
-  if(document.querySelectorAll('.varrow').length>1) el.remove();
-}
-const COLOR_NAMES={1:'ホワイト',2:'ブラック',3:'グレー',4:'ブラウン',5:'ベージュ',6:'グリーン',7:'ブルー',8:'パープル',9:'イエロー',10:'ピンク',11:'レッド',12:'オレンジ',13:'シルバー',14:'ゴールド',15:'クリア',16:'ネイビー',99:'マルチカラー'};
+
 function getVariants(){
-  return Array.from(document.querySelectorAll('.varrow')).map(row=>{
-    const sizeIn=row.querySelector('input[type=text]:not(.colortxt)');
-    const colorSel=row.querySelector('select.colorsel');
-    const colorTxt=row.querySelector('input.colortxt');
-    const radios=row.querySelectorAll('input[type=radio]');
-    const type=Array.from(radios).find(r=>r.checked)?.value||'order';
-    const qty=row.querySelector('input[type=number]');
-    const colorMasterId=colorSel?parseInt(colorSel.value):99;
-    const colorFamily=COLOR_NAMES[colorMasterId]||'マルチカラー';
-    const colorName=(colorTxt?.value?.trim())||colorFamily;
-    return {
-      size:sizeIn?sizeIn.value.trim():'',
-      color:colorName,
-      colorMasterId:colorMasterId,
-      type:type,
-      qty:parseInt(qty?.value)||1
-    };
-  }).filter(v=>v.size||v.colorMasterId!==99||(v.color&&v.color!=='マルチカラー'));
+  const colors=Array.from(document.querySelectorAll('#vcColorList .vcColorRow')).map(r=>({
+    vid:r.dataset.vid,
+    masterColor:parseInt(r.querySelector('.colorsel')?.value)||99,
+    name:(r.querySelector('.colortxt')?.value?.trim())||COLOR_NAMES[parseInt(r.querySelector('.colorsel')?.value)||99]||'マルチカラー'
+  }));
+  const sizes=Array.from(document.querySelectorAll('#vcSizeList .vcSizeRow')).map(r=>({
+    sid:r.dataset.sid,
+    label:(r.querySelector('input')?.value?.trim())||'FREE'
+  }));
+  const rows=[];
+  colors.forEach(c=>{
+    sizes.forEach(s=>{
+      const key=c.vid+'_'+s.sid;
+      const sel=document.querySelector(`.vcStockSel[data-key="${key}"]`);
+      const val=sel?sel.value:(vcStockState[key]||'order');
+      if(val==='nostock') return;
+      rows.push({size:s.label,color:c.name,colorMasterId:c.masterColor,type:val==='stock'?'stock':'order',qty:val==='stock'?1:10});
+    });
+  });
+  return rows;
 }
 
 // 買い付け国連動
@@ -1995,8 +2077,7 @@ function resetForm(){
   document.getElementById('refPriceWrap').style.display='none';
   document.getElementById('fxRate').value='115';
   document.getElementById('intlShip').value='25';
-  document.getElementById('varList').innerHTML='';
-  addVariant();
+  vcInit();
   updateNameCount();
   calcProfit();
 }
