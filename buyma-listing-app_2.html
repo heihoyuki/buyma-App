@@ -1028,7 +1028,7 @@ async function applyImageEdits(){
       }
     }
     for(let i=0;i<newImgs.length;i++){
-      if(newImgs[i].url&&newImgs[i].url.includes('ibb.co')) continue;
+      // 透かしを全画像に反映するため、アップロード済み画像もスキップしない
       statusEl.textContent=`⏳ 画像を処理中 ${i+1}/${newImgs.length}...`;
       const edited=await editSingleImage(newImgs[i].dataUrl,opts);
       const fd=new FormData(); fd.append('key',ibKey); fd.append('image',edited.split(',')[1]);
