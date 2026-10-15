@@ -725,7 +725,7 @@ window.addEventListener('load',()=>{
   if(ib) document.getElementById('imgbbKey').value=ib;
   const wm=localStorage.getItem('wmt');if(wm) document.getElementById('wmText').value=wm;
   if(localStorage.getItem('wmpn')==='1'){document.getElementById('wmPname').checked=true;document.getElementById('wmBannerShortWrap').style.display='block';}
-  const wbs=localStorage.getItem('wmbs');if(wbs) document.getElementById('wmBannerShort').value=wbs;
+  localStorage.removeItem('wmbs');document.getElementById('pname').addEventListener('input',syncBannerShort);document.addEventListener('change',e=>{const t=e.target;if(t&&(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&(!t.type||t.type==='text')))&&/[™®©℠]/.test(t.value)){t.value=stripMarks(t.value);}});
   const defaultDefs='Australia Post（スタンダード 5〜14日）:918102\n日本郵便 - ゆうパック:965049\nDHL EXPRESS:970663';
   const defsVal=smd||defaultDefs;
   document.getElementById('shipMethodDefs').value=defsVal;
@@ -735,7 +735,6 @@ window.addEventListener('load',()=>{
   document.getElementById('imgbbKey').addEventListener('input',e=>localStorage.setItem('ibk',e.target.value));
   document.getElementById('wmText').addEventListener('input',e=>localStorage.setItem('wmt',e.target.value));
   document.getElementById('wmPname').addEventListener('change',e=>{localStorage.setItem('wmpn',e.target.checked?'1':'0');document.getElementById('wmBannerShortWrap').style.display=e.target.checked?'block':'none';});
-  document.getElementById('wmBannerShort').addEventListener('input',e=>localStorage.setItem('wmbs',e.target.value));
 
 
   // ブランド履歴チップを表示
@@ -787,6 +786,24 @@ function setMode(m){
 }
 
 // 写真
+// バナー2行目（短縮商品名）は商品名から自動入力（前回の値は残さない）
+function autoBannerShort(){
+  let s=stripMarks((document.getElementById('pname').value||'').trim());
+  const b=(typeof selBrandName!=='undefined'&&selBrandName)?selBrandName.replace(/\(.*?\)/g,'').trim():'';
+  if(b){ const eb=b.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); s=s.replace(new RegExp('[【\\[(（]'+eb+'[】\\])）]','gi'),' ').replace(new RegExp('(^|\\s)'+eb+'(?=\\s|$)','gi'),' '); }
+  s=s.replace(/[【\[（(]\s*[】\]）)]/g,'').replace(/^[\s|｜/／・\-–]+|[\s|｜/／・\-–]+$/g,'').replace(/\s+/g,' ').trim();
+  return s.slice(0,50);
+}
+function syncBannerShort(){ const el=document.getElementById('wmBannerShort'); if(el) el.value=autoBannerShort(); }
+// BUYMAでエラーになる記号（™ ® © ℠）を自動で消す
+function stripMarks(s){ return String(s==null?'':s).replace(/[™®©℠]/g,''); }
+function stripMarksIn(){
+  ['s1','s2','s3'].forEach(id=>{ const sc=document.getElementById(id); if(!sc) return;
+    sc.querySelectorAll('input[type=text],input:not([type]),textarea').forEach(e=>{ if(/[™®©℠]/.test(e.value)){ e.value=stripMarks(e.value); } });
+  });
+  if(typeof updateRCount==='function') try{updateRCount();}catch(_){}
+  if(typeof updateNameCount==='function') try{updateNameCount();}catch(_){}
+}
 function addImgs(files){
   const ibKey=document.getElementById('imgbbKey').value.trim();
   Array.from(files).forEach(f=>{
@@ -802,7 +819,7 @@ function addImgs(files){
           const wmStr=document.getElementById('wmText').value.trim();
           const doBanner=document.getElementById('wmPname').checked;
           const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
-          const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+          const shortStr=doBanner?stripMarks(document.getElementById('wmBannerShort').value.trim()||autoBannerShort()):'';
           const b64=await toSquareB64(dataUrl,wmStr,brandStr,shortStr);
           const fd=new FormData();
           fd.append('key',ibKey);
@@ -1050,7 +1067,7 @@ async function applyImageEdits(){
 
 // ブランド
 function selBrand(id,name,fromChip){
-  selBrandId=id; selBrandName=name;
+  selBrandId=id; selBrandName=name; syncBannerShort();
   if(id&&id!==0) saveBrandToHistory(id,name);
   renderFavBrands();
   document.getElementById('bsearch').value='';
@@ -1426,7 +1443,7 @@ function addImgsToUrlDrop(files){
           const wmStr=document.getElementById('wmText').value.trim();
           const doBanner=document.getElementById('wmPname').checked;
           const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
-          const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+          const shortStr=doBanner?stripMarks(document.getElementById('wmBannerShort').value.trim()||autoBannerShort()):'';
           const b64=await toSquareB64(dataUrl,wmStr,brandStr,shortStr);
           const fd=new FormData();
           fd.append('image',b64||dataUrl.split(',')[1]);
@@ -1543,7 +1560,7 @@ async function doFetchMultiColor(){
   const combinedImages=allImages.filter(u=>{const k=u.split('?')[0];if(seenImg.has(k))return false;seenImg.add(k);return true;}).slice(0,20);
   // メイン情報を反映
   if(mainInfo){
-    if(mainInfo.product_name) document.getElementById('pname').value=mainInfo.product_name;
+    if(mainInfo.product_name){ document.getElementById('pname').value=stripMarks(mainInfo.product_name); syncBannerShort(); }
     if(mainInfo.price_aud){document.getElementById('costPrice').value=mainInfo.price_aud;calcProfit();}
     const extra=[mainInfo.description,mainInfo.details,mainInfo.material].filter(Boolean).join('\n');
     if(extra&&!document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
@@ -1655,7 +1672,7 @@ sizesはShopify JSONならproduct.options[name=Size].values、ページならサ
       }
       p.image_urls=uniq.slice(0,20);
     }
-    if(p.product_name) document.getElementById('pname').value=p.product_name;
+    if(p.product_name){ document.getElementById('pname').value=stripMarks(p.product_name); syncBannerShort(); }
     if(p.price_aud){document.getElementById('costPrice').value=p.price_aud;calcProfit();}
     const extra=[p.description,p.details,p.material,p.color].filter(Boolean).join('\n');
     if(extra&&!document.getElementById('memo').value.trim()) document.getElementById('memo').value=extra;
@@ -1822,6 +1839,7 @@ function buildResult(parsed){
     ||SHOP_LINK;
   links.push(catLink);
   document.getElementById('rlinks').value=links.join('\n\n');
+  stripMarksIn();
 }
 
 // 画像を正方形レターボックス化してbase64で返す（グローバル・CORS失敗時はnull）
@@ -1879,6 +1897,7 @@ function toSquareB64(src,wmStr='',brandStr='',shortStr=''){return new Promise(re
 
 // BUYMA出品
 async function submitBuyma(mode='publish'){
+  stripMarksIn();
   const token=document.getElementById('buymaToken').value.trim();
   if(!token){document.getElementById('mInfo').classList.add('open');return;}
 
@@ -1901,7 +1920,7 @@ async function submitBuyma(mode='publish'){
         const wmStr=document.getElementById('wmText').value.trim();
         const doBanner=document.getElementById('wmPname').checked;
         const brandStr=doBanner?(selBrandName?selBrandName.replace(/\(.*?\)/g,'').trim():''):'';
-        const shortStr=doBanner?document.getElementById('wmBannerShort').value.trim():'';
+        const shortStr=doBanner?stripMarks(document.getElementById('wmBannerShort').value.trim()||autoBannerShort()):'';
         const b64=await toSquareB64(u,wmStr,brandStr,shortStr);
         const fd=new FormData();fd.append('key',ibKey);
         if(b64) fd.append('image',b64); else fd.append('image',u);
@@ -2075,6 +2094,7 @@ function cm(id){document.getElementById(id).classList.remove('open');}
 function showScr(id){
   ['s1','s2','s3','s4'].forEach(s=>document.getElementById(s).classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  stripMarksIn();
   const tabs=['tab1','tab2','tab3','tab4'],cur=['s1','s2','s3','s4'].indexOf(id);
   tabs.forEach((t,i)=>{
     const el=document.getElementById(t);
@@ -2098,7 +2118,7 @@ function resetForm(){
   document.getElementById('selbrandtag').innerHTML='';
   document.getElementById('pgrid').innerHTML='';
   document.getElementById('pcount').style.display='none';
-  ['pname','price','costPrice','domShip','targetProfit','memo','pasteText','srcUrl','fetchUrl','refPrice'].forEach(id=>document.getElementById(id).value='');
+  ['pname','wmBannerShort','price','costPrice','domShip','targetProfit','memo','pasteText','srcUrl','fetchUrl','refPrice'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('refPriceOn').checked=false;
   document.getElementById('refPriceWrap').style.display='none';
   document.getElementById('fxRate').value='115';
