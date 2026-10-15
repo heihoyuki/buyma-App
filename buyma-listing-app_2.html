@@ -795,15 +795,32 @@ function autoBannerShort(){
   return s.slice(0,50);
 }
 function syncBannerShort(){ const el=document.getElementById('wmBannerShort'); if(el) el.value=autoBannerShort(); }
-// BUYMAでエラーになる記号（™ ® © ℠）を自動で消す
-function stripMarks(s){ return String(s==null?'':s).replace(/[™®©℠]/g,''); }
+// BUYMAでエラーになる記号（™ ® © ℠ ℗）をどんな状態でも自動で消す
+const MARK_RE=/[\u2122\u00AE\u00A9\u2120\u2117]/g;
+function stripMarks(s){ return String(s==null?'':s).replace(MARK_RE,''); }
 function stripMarksIn(){
-  ['s1','s2','s3'].forEach(id=>{ const sc=document.getElementById(id); if(!sc) return;
-    sc.querySelectorAll('input[type=text],input:not([type]),textarea').forEach(e=>{ if(/[™®©℠]/.test(e.value)){ e.value=stripMarks(e.value); } });
+  let changed=false;
+  document.querySelectorAll('input[type=text],input[type=search],input:not([type]),textarea').forEach(e=>{
+    if(MARK_RE.test(e.value)){ MARK_RE.lastIndex=0; const pos=e.selectionStart; const before=e.value.length; e.value=stripMarks(e.value); changed=true;
+      try{ if(document.activeElement===e&&pos!=null){ const p=Math.max(0,pos-(before-e.value.length)); e.setSelectionRange(p,p);} }catch(_){}
+    }
+    MARK_RE.lastIndex=0;
   });
-  if(typeof updateRCount==='function') try{updateRCount();}catch(_){}
-  if(typeof updateNameCount==='function') try{updateNameCount();}catch(_){}
+  if(changed){ if(typeof updateRCount==='function') try{updateRCount();}catch(_){} if(typeof updateNameCount==='function') try{updateNameCount();}catch(_){} }
 }
+// 入力・貼り付けのたび／0.5秒ごと／送信時にも消す
+document.addEventListener('input',()=>stripMarksIn(),true);
+document.addEventListener('paste',()=>setTimeout(stripMarksIn,0),true);
+setInterval(stripMarksIn,500);
+(function(){
+  const of=window.fetch.bind(window);
+  window.fetch=function(url,opt){
+    try{ const u=String(url&&url.url||url); if(opt&&typeof opt.body==='string'&&!/anthropic\.com/.test(u)){ opt={...opt,body:stripMarks(opt.body)}; } }catch(_){}
+    return of(url,opt);
+  };
+  const os=XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send=function(body){ if(typeof body==='string') body=stripMarks(body); return os.call(this,body); };
+})();
 function addImgs(files){
   const ibKey=document.getElementById('imgbbKey').value.trim();
   Array.from(files).forEach(f=>{
