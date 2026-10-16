@@ -821,6 +821,21 @@ setInterval(stripMarksIn,500);
   const os=XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send=function(body){ if(typeof body==='string') body=stripMarks(body); return os.call(this,body); };
 })();
+// サイズ名はBUYMAの上限（半角10文字・全角は2文字分）に自動で収める
+function sizeWidth(s){ let w=0; for(const ch of String(s)) w+=(ch.charCodeAt(0)<=0x7e)?1:2; return w; }
+function fitSize(s){
+  let t=String(s==null?'':s).replace(/[\u2122\u00AE\u00A9\u2120\u2117]/g,'');
+  try{ t=t.normalize('NFKC'); }catch(_){}
+  t=t.replace(/\s+/g,' ').trim();
+  if(sizeWidth(t)>10&&/^(free|one ?size|os|フリー|フリーサイズ|ワンサイズ)/i.test(t)) t='FREE';
+  if(sizeWidth(t)>10) t=t.replace(/[（(\[【][^）)\]】]*[）)\]】]/g,'').trim();
+  if(sizeWidth(t)>10) t=t.replace(/\s*([\/・,|-])\s*/g,'$1').replace(/\s+/g,'');
+  if(sizeWidth(t)>10){ let out='',w=0; for(const ch of t){ const cw=(ch.charCodeAt(0)<=0x7e)?1:2; if(w+cw>10) break; out+=ch; w+=cw; } t=out; }
+  return t;
+}
+function vcFitSizeInput(el){ const f=fitSize(el.value); if(f!==el.value.trim()&&f!==el.value){ el.value=f; } }
+function vcFitAllSizes(){ let ch=false; document.querySelectorAll('#vcSizeList .vcSizeRow input').forEach(e=>{ if(document.activeElement===e&&sizeWidth(e.value)<=10) return; const f=fitSize(e.value); if(f!==e.value){ e.value=f; ch=true; } }); if(ch&&typeof vcRenderMatrix==='function') try{vcRenderMatrix();}catch(_){} }
+setInterval(vcFitAllSizes,500);
 function addImgs(files){
   const ibKey=document.getElementById('imgbbKey').value.trim();
   Array.from(files).forEach(f=>{
@@ -1250,12 +1265,12 @@ function vcAutoFillName(sel){
 function vcAddSize(initialVal){
   const sid='vs'+vcSizeId++;
   const isFirst=document.querySelectorAll('#vcSizeList .vcSizeRow').length===0;
-  const defVal=initialVal!==undefined?initialVal:(isFirst?'FREE':'');
+  const defVal=fitSize(initialVal!==undefined?initialVal:(isFirst?'FREE':''));
   const list=document.getElementById('vcSizeList');
   const html=`<div class="vcSizeRow" data-sid="${sid}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-    <input type="text" value="${escHtml(defVal)}" placeholder="例：FREE / S / M / XL / 38"
+    <input type="text" value="${escHtml(defVal)}" placeholder="例：FREE / S / M / XL / 38（半角10文字まで）"
       style="flex:1;padding:10px 12px;font-size:15px;"
-      oninput="vcRenderMatrix()">
+      oninput="vcFitSizeInput(this);vcRenderMatrix()">
     <button onclick="vcRemoveSize('${sid}')" style="width:28px;height:28px;background:#242424;border:1px solid #3e3e3e;border-radius:6px;color:#888;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
   </div>`;
   list.insertAdjacentHTML('beforeend', html);
