@@ -821,38 +821,44 @@ setInterval(stripMarksIn,500);
   const os=XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send=function(body){ if(typeof body==='string') body=stripMarks(body); return os.call(this,body); };
 })();
-// サイズ名ルール：表記は1つだけ。優先順 1:cm → 2:EU → 3:US(W/M) → 4:AU(W/M)。他の表記（UKなど）は消す。
-// 最大 半角13文字（全角は2文字分）。超える場合はスペースを詰め、さらに超えれば単語単位で縮める。
+// サイズ名ルール：規格表記は1つだけ。優先順 1:cm → 2:EU → 3:US(W/M) → 4:UK → 5:AU(W/M)。それ以外の規格は消す。
+// S/M/L などの文字サイズがあれば「S(AU8)」のように併記（13文字を超える場合は文字サイズだけ）。
+// 最大 半角13文字（全角は2文字分）。
 const SIZE_MAX=13;
 function sizeWidth(s){ let w=0; for(const ch of String(s)) w+=(ch.charCodeAt(0)<=0x7e)?1:2; return w; }
 function cutWidth(t,max){ let out='',w=0; for(const ch of t){ const cw=(ch.charCodeAt(0)<=0x7e)?1:2; if(w+cw>max) break; out+=ch; w+=cw; } return out.trim(); }
+function compactSize(t){ return t.replace(/\s*([\/・,|-])\s*/g,'$1').replace(/\s+(?=\d\/\d)/g,'\u0002').replace(/\s+/g,'').replace(/\u0002/g,' '); }
 function shrinkTo(t){
   if(sizeWidth(t)<=SIZE_MAX) return t;
-  let u=t.replace(/\s*([\/・,|-])\s*/g,'$1').replace(/\s+(?=\d\/\d)/g,'\u0002').replace(/\s+/g,'').replace(/\u0002/g,' ');
-  if(sizeWidth(u)<=SIZE_MAX) return u;
+  const u=compactSize(t); if(sizeWidth(u)<=SIZE_MAX) return u;
   const w=t.split(/\s+/); let o='';
   for(const x of w){ const nx=o?o+' '+x:x; if(sizeWidth(nx)<=SIZE_MAX) o=nx; else break; }
   return o||cutWidth(u,SIZE_MAX);
 }
+const LETTER_RE=/^(X{0,3}S|M|X{0,3}L|[2-5]XL|FREE|F|OS|ONE ?SIZE|フリー|ワンサイズ)(\s*[\/-]\s*(X{0,3}S|M|X{0,3}L|[2-5]XL))?$/i;
 function fitSize(s){
   let t=String(s==null?'':s).replace(/[\u2122\u00AE\u00A9\u2120\u2117]/g,'');
   try{ t=t.normalize('NFKC'); }catch(_){}
   t=t.replace(/\s+/g,' ').trim();
   if(!t) return t;
-  if(sizeWidth(t)>SIZE_MAX&&/^(free|one ?size|os\b|フリー|ワンサイズ)/i.test(t)) return 'FREE';
-  // 分数（EU 40 2/3 など）の「/」は区切りと見なさない
-  const prot=t.replace(/(\d)\s+(\d)\/(\d)/g,'$1 $2\u0001$3');
+  // 分数（EU 40 2/3）や S/M などの「/」は区切りと見なさない
+  let prot=t.replace(/(\d)\s+(\d)\/(\d)/g,'$1 $2\u0001$3')
+            .replace(/(^|[^A-Za-z])(X{0,3}S|M|X{0,3}L)\s*\/\s*(X{0,3}S|M|X{0,3}L)(?![A-Za-z])/gi,'$1$2\u0001$3');
   const segs=prot.split(/[\/,|・;]|[（(\[【]|[）)\]】]/).map(x=>x.replace(/\u0001/g,'/').trim()).filter(Boolean);
   const isCm=x=>/\d\s*cm\b/i.test(x)||/cm\s*\d/i.test(x);
-  const isEU=x=>/(^|[^a-z])EU(?![a-z])/i.test(x);
-  const isUS=x=>/(^|[^a-z])US(?![a-z])/i.test(x);
-  const isAU=x=>/(^|[^a-z])AU(?![a-z])/i.test(x);
-  for(const test of [isCm,isEU,isUS,isAU]){
-    const seg=segs.find(test);
-    if(seg) return shrinkTo(seg);
+  const sysRe=k=>new RegExp('(^|[^a-z])'+k+'(?![a-z])','i');
+  const isEU=x=>sysRe('EU').test(x), isUS=x=>sysRe('US').test(x), isUK=x=>sysRe('UK').test(x), isAU=x=>sysRe('AU').test(x);
+  let sys=null; for(const test of [isCm,isEU,isUS,isUK,isAU]){ const seg=segs.find(test); if(seg){ sys=seg; break; } }
+  const letter=segs.find(x=>LETTER_RE.test(x));
+  if(letter&&sys){
+    const L=letter.replace(/\s+/g,'');
+    for(const c of [L+'('+sys+')', L+'('+compactSize(sys)+')']) if(sizeWidth(c)<=SIZE_MAX) return c;
+    return /^(free|one ?size|os|f|フリー|ワンサイズ)$/i.test(L)?'FREE':L;
   }
-  // cm/EU/US/AU のどれも無い場合：13文字以内ならそのまま、超えたらカッコ内を消して縮める
+  if(sys) return shrinkTo(sys);
   if(sizeWidth(t)<=SIZE_MAX) return t;
+  if(/^(free|one ?size|os\b|フリー|ワンサイズ)/i.test(t)) return 'FREE';
+  if(letter) return letter.replace(/\s+/g,'');
   return shrinkTo(t.replace(/[（(\[【][^）)\]】]*[）)\]】]/g,'').trim()||t);
 }
 function vcFitSizeInput(el){ const f=fitSize(el.value); if(f!==el.value.trim()&&f!==el.value){ el.value=f; } }
