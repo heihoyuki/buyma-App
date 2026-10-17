@@ -821,20 +821,38 @@ setInterval(stripMarksIn,500);
   const os=XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send=function(body){ if(typeof body==='string') body=stripMarks(body); return os.call(this,body); };
 })();
-// サイズ名はBUYMAの上限（半角10文字・全角は2文字分）に自動で収める
+// サイズ名は半角13文字まで（全角は2文字分）。超える場合は cm → US → EU → AU の優先順で表記を絞る
+const SIZE_MAX=13;
 function sizeWidth(s){ let w=0; for(const ch of String(s)) w+=(ch.charCodeAt(0)<=0x7e)?1:2; return w; }
+function cutWidth(t,max){ let out='',w=0; for(const ch of t){ const cw=(ch.charCodeAt(0)<=0x7e)?1:2; if(w+cw>max) break; out+=ch; w+=cw; } return out.trim(); }
 function fitSize(s){
   let t=String(s==null?'':s).replace(/[\u2122\u00AE\u00A9\u2120\u2117]/g,'');
   try{ t=t.normalize('NFKC'); }catch(_){}
   t=t.replace(/\s+/g,' ').trim();
-  if(sizeWidth(t)>10&&/^(free|one ?size|os|フリー|フリーサイズ|ワンサイズ)/i.test(t)) t='FREE';
-  if(sizeWidth(t)>10) t=t.replace(/[（(\[【][^）)\]】]*[）)\]】]/g,'').trim();
-  if(sizeWidth(t)>10) t=t.replace(/\s*([\/・,|-])\s*/g,'$1').replace(/\s+/g,'');
-  if(sizeWidth(t)>10){ let out='',w=0; for(const ch of t){ const cw=(ch.charCodeAt(0)<=0x7e)?1:2; if(w+cw>10) break; out+=ch; w+=cw; } t=out; }
-  return t;
+  if(sizeWidth(t)<=SIZE_MAX) return t;
+  if(/^(free|one ?size|os\b|フリー|ワンサイズ)/i.test(t)) return 'FREE';
+  // 分数（EU 40 2/3 など）の「/」を区切りと誤認しないよう保護
+  const prot=t.replace(/(\d)\s+(\d)\/(\d)/g,'$1 $2\u0001$3');
+  const segs=prot.split(/[\/,|・;]|[（(\[【]|[）)\]】]/).map(x=>x.replace(/\u0001/g,'/').trim()).filter(Boolean);
+  const sys=x=>/cm/i.test(x)?'cm':/(^|[^a-z])US/i.test(x)?'US':/(^|[^a-z])EU/i.test(x)?'EU':/(^|[^a-z])AU/i.test(x)?'AU':'';
+  const order=['cm','US','EU','AU']; const picked=[];
+  for(const o of order){ const seg=segs.find(x=>sys(x)===o); if(seg) picked.push(seg.replace(/\s+(?=\d\/\d)/g,'\u0002').replace(/\s+/g,'').replace(/\u0002/g,' ')); }
+  if(picked.length){
+    let out=picked[0]; if(sizeWidth(out)>SIZE_MAX) return cutWidth(out,SIZE_MAX);
+    for(const p of picked.slice(1)){ const nx=out+'/'+p; if(sizeWidth(nx)<=SIZE_MAX) out=nx; else break; }
+    return out;
+  }
+  // 規格名が無い場合：カッコ内を消す → スペースを詰める → それでも長ければ13文字で切る
+  let u=t.replace(/[（(\[【][^）)\]】]*[）)\]】]/g,'').trim();
+  if(sizeWidth(u)>SIZE_MAX) u=u.replace(/\s*([\/・,|-])\s*/g,'$1').replace(/\s+/g,'');
+  if(sizeWidth(u)<=SIZE_MAX) return u;
+  // 単語単位で入るところまで残す（途中で切れないように）
+  const w=t.replace(/[（(\[【][^）)\]】]*[）)\]】]/g,'').trim().split(/\s+/); let o='';
+  for(const x of w){ const nx=o?o+' '+x:x; if(sizeWidth(nx)<=SIZE_MAX) o=nx; else break; }
+  return o||cutWidth(u,SIZE_MAX);
 }
 function vcFitSizeInput(el){ const f=fitSize(el.value); if(f!==el.value.trim()&&f!==el.value){ el.value=f; } }
-function vcFitAllSizes(){ let ch=false; document.querySelectorAll('#vcSizeList .vcSizeRow input').forEach(e=>{ if(document.activeElement===e&&sizeWidth(e.value)<=10) return; const f=fitSize(e.value); if(f!==e.value){ e.value=f; ch=true; } }); if(ch&&typeof vcRenderMatrix==='function') try{vcRenderMatrix();}catch(_){} }
+function vcFitAllSizes(){ let ch=false; document.querySelectorAll('#vcSizeList .vcSizeRow input').forEach(e=>{ if(document.activeElement===e&&sizeWidth(e.value)<=SIZE_MAX) return; const f=fitSize(e.value); if(f!==e.value){ e.value=f; ch=true; } }); if(ch&&typeof vcRenderMatrix==='function') try{vcRenderMatrix();}catch(_){} }
 setInterval(vcFitAllSizes,500);
 function addImgs(files){
   const ibKey=document.getElementById('imgbbKey').value.trim();
@@ -1268,7 +1286,7 @@ function vcAddSize(initialVal){
   const defVal=fitSize(initialVal!==undefined?initialVal:(isFirst?'FREE':''));
   const list=document.getElementById('vcSizeList');
   const html=`<div class="vcSizeRow" data-sid="${sid}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-    <input type="text" value="${escHtml(defVal)}" placeholder="例：FREE / S / M / XL / 38（半角10文字まで）"
+    <input type="text" value="${escHtml(defVal)}" placeholder="例：FREE / S / M / XL / 38（半角13文字まで）"
       style="flex:1;padding:10px 12px;font-size:15px;"
       oninput="vcFitSizeInput(this);vcRenderMatrix()">
     <button onclick="vcRemoveSize('${sid}')" style="width:28px;height:28px;background:#242424;border:1px solid #3e3e3e;border-radius:6px;color:#888;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1;">×</button>
